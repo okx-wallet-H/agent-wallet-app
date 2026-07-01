@@ -11,16 +11,39 @@ import redis.clients.jedis.JedisPool
 import redis.clients.jedis.JedisPoolConfig
 
 /**
- * Database plugin — PostgreSQL (via Exposed + HikariCP) + Redis.
- * Auto-creates tables on init (MVP migration strategy).
+ * Database plugin — auto-detects PostgreSQL vs H2, Redis vs in-memory.
+ * Local dev: zero dependencies (H2 + in-memory map).
+ * Production: PostgreSQL + Redis.
  */
 object DatabaseFactory {
 
     private var hikari: HikariDataSource? = null
     private var jedisPool: JedisPool? = null
+    var isProduction = false
+        private set
 
     fun init(config: AppConfig) {
-        // PostgreSQL
+        isProduction = config.isProduction()
+
+        if (isProduction) {
+            initPostgres(config)
+            initRedis(config)
+        } else {
+            initH2()
+        }
+
+        // Auto-create tables
+        transaction {
+            SchemaUtils.create(
+                UsersTable,
+                StrategiesTable,
+                ConversationsTable,
+                TradeHistoryTable
+            )
+        }
+    }
+
+    private fun initPostgres(config: AppConfig) {
         val hikariConfig = HikariConfig().apply {
             jdbcUrl = config.dbUrl
             username = config.dbUser
@@ -32,28 +55,33 @@ object DatabaseFactory {
         }
         hikari = HikariDataSource(hikariConfig)
         Database.connect(hikari!!)
-
-        // Auto-create tables (MVP migration)
-        transaction {
-            SchemaUtils.create(
-                UsersTable,
-                StrategiesTable,
-                ConversationsTable,
-                TradeHistoryTable
-            )
-        }
-
-        // Redis
-        val redisConfig = JedisPoolConfig().apply {
-            maxTotal = 10
-            maxIdle = 5
-            minIdle = 2
-        }
-        jedisPool = JedisPool(redisConfig, config.redisHost, config.redisPort)
     }
 
-    fun redis(): JedisPool = jedisPool
-        ?: throw IllegalStateException("Database not initialized. Call DatabaseFactory.init() first.")
+    private fun initH2() {
+        val hikariConfig = HikariConfig().apply {
+            jdbcUrl = "jdbc:h2:mem:agentwallet;DB_CLOSE_DELAY=-1"
+            driverClassName = "org.h2.Driver"
+            maximumPoolSize = 5
+        }
+        hikari = HikariDataSource(hikariConfig)
+        Database.connect(hikari!!)
+    }
+
+    private fun initRedis(config: AppConfig) {
+        try {
+            val redisConfig = JedisPoolConfig().apply {
+                maxTotal = 10
+                maxIdle = 5
+                minIdle = 2
+            }
+            jedisPool = JedisPool(redisConfig, config.redisHost, config.redisPort)
+            jedisPool!!.resource.use { it.ping() } // test connection
+        } catch (e: Exception) {
+            jedisPool = null // fall back to in-memory
+        }
+    }
+
+    fun redis(): JedisPool? = jedisPool
 
     fun shutdown() {
         hikari?.close()
@@ -62,30 +90,49 @@ object DatabaseFactory {
 }
 
 /**
- * Redis-backed daily usage tracker for RiskEngine.
+ * Usage tracker — Redis when available, in-memory fallback.
  */
 object RiskUsageTracker {
-    private val jedis: redis.clients.jedis.Jedis
-        get() = DatabaseFactory.redis().resource
-
-    private fun key(userId: String): String = "risk:daily:$userId"
+    private val memoryStore = mutableMapOf<String, Double>()
 
     fun get(userId: String): Double {
-        return jedis.use { it.get(key(userId))?.toDoubleOrNull() ?: 0.0 }
+        val redis = DatabaseFactory.redis()
+        return if (redis != null) {
+            try {
+                redis.resource.use { it.get("risk:daily:$userId")?.toDoubleOrNull() ?: 0.0 }
+            } catch (e: Exception) {
+                memoryStore[userId] ?: 0.0
+            }
+        } else {
+            memoryStore[userId] ?: 0.0
+        }
     }
 
     fun increment(userId: String, amount: Double) {
-        jedis.use { j ->
-            j.incrByFloat(key(userId), amount)
-            // TTL to midnight
-            val now = java.time.LocalTime.now()
-            val midnight = java.time.LocalTime.MAX  // 23:59:59.999
-            val secondsToMidnight = midnight.toSecondOfDay() - now.toSecondOfDay() + 1
-            j.expire(key(userId), secondsToMidnight.toLong())
+        val redis = DatabaseFactory.redis()
+        if (redis != null) {
+            try {
+                redis.resource.use { j ->
+                    j.incrByFloat("risk:daily:$userId", amount)
+                    val now = java.time.LocalTime.now()
+                    val secondsToMidnight = java.time.LocalTime.MAX.toSecondOfDay() - now.toSecondOfDay() + 1
+                    j.expire("risk:daily:$userId", secondsToMidnight.toLong())
+                }
+            } catch (e: Exception) {
+                memoryStore[userId] = (memoryStore[userId] ?: 0.0) + amount
+            }
+        } else {
+            memoryStore[userId] = (memoryStore[userId] ?: 0.0) + amount
         }
     }
 
     fun reset(userId: String) {
-        jedis.use { it.del(key(userId)) }
+        val redis = DatabaseFactory.redis()
+        if (redis != null) {
+            try { redis.resource.use { it.del("risk:daily:$userId") } }
+            catch (e: Exception) { memoryStore.remove(userId) }
+        } else {
+            memoryStore.remove(userId)
+        }
     }
 }

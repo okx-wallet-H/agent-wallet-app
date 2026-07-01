@@ -1,54 +1,40 @@
 package com.agentwallet.services
 
 import io.ktor.client.*
+import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
-import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.*
 
-/**
- * OKX Signal / Trenches / Token API client — real HTTP calls.
- */
 class OkxSignalService(
-    private val httpClient: HttpClient,
-    private val auth: OkxAuth,
+    val apiKey: String,
+    val secretKey: String,
+    val passphrase: String,
     private val baseUrl: String
 ) {
+    private val httpClient = createOkxHttpClient()
+    private val auth = OkxAuth(apiKey, secretKey, passphrase)
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    /**
-     * Get recent signal list from OKX.
-     * POST /api/v6/dex/market/signal/list
-     */
     suspend fun getSignals(chainId: String, walletType: String = "1,2,3"): List<SignalData> {
-        val body = """
-            [{
-                "chainId": "$chainId",
-                "walletType": "$walletType",
-                "minAmountUsd": "1000",
-                "minAddressCount": "2",
-                "limit": "20"
-            }]
-        """.trimIndent()
+        if (apiKey.isBlank()) return emptyList()
+        val body = """[{"chainId":"$chainId","walletType":"$walletType","minAmountUsd":"1000","minAddressCount":"2","limit":"20"}]"""
 
-        val response: io.ktor.client.statement.HttpResponse =
-            httpClient.post("$baseUrl/api/v6/dex/market/signal/list") {
-                auth.sign(this, body)
-                setBody(body)
-            }
+        val response: HttpResponse = httpClient.post("$baseUrl/api/v6/dex/market/signal/list") {
+            auth.sign(this, body)
+            setBody(body)
+        }
+        val responseText: String = response.body()
+        val root = json.parseToJsonElement(responseText).jsonObject
+        if (root["code"]?.jsonPrimitive?.content != "0") return emptyList()
 
-        val root = json.parseToJsonElement(response.bodyAsText())
-        val code = root.jsonObject["code"]?.jsonPrimitive?.content
-        if (code != "0") throw OkxApiException("Signal API error: ${root.jsonObject["msg"]?.jsonPrimitive?.content}")
-
-        return root.jsonObject["data"]?.jsonArray?.map { item ->
+        return root["data"]?.jsonArray?.map { item ->
             val obj = item.jsonObject
             SignalData(
                 tokenAddress = obj["tokenAddress"]?.jsonPrimitive?.content ?: "",
                 tokenSymbol = obj["tokenSymbol"]?.jsonPrimitive?.content ?: "",
-                chainId = chainId,
-                marketCapUsd = obj["marketCapUsd"]?.jsonPrimitive?.content ?: "0",
+                chainId = chainId, marketCapUsd = obj["marketCapUsd"]?.jsonPrimitive?.content ?: "0",
                 amountUsd = obj["amountUsd"]?.jsonPrimitive?.content ?: "0",
                 walletType = obj["walletType"]?.jsonPrimitive?.content ?: "",
                 triggerWallets = obj["triggerWallets"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList(),
@@ -57,21 +43,15 @@ class OkxSignalService(
         } ?: emptyList()
     }
 
-    /**
-     * Get token security analysis.
-     * POST /api/v6/dex/market/token/advanced-info
-     */
     suspend fun getTokenAnalysis(chainId: String, tokenAddress: String): TokenAnalysis {
+        if (apiKey.isBlank()) return TokenAnalysis("unknown", emptyList(), 0, 0.0, 0.0, false)
         val body = """[{"chainId":"$chainId","tokenAddress":"$tokenAddress"}]"""
-
         val response = httpClient.post("$baseUrl/api/v6/dex/market/token/advanced-info") {
-            auth.sign(this, body)
-            setBody(body)
+            auth.sign(this, body); setBody(body)
         }
-
-        val root = json.parseToJsonElement(response.bodyAsText())
-        val data = root.jsonObject["data"]?.jsonArray?.firstOrNull()?.jsonObject
-
+        val text: String = response.body()
+        val root = json.parseToJsonElement(text).jsonObject
+        val data = root["data"]?.jsonArray?.firstOrNull()?.jsonObject
         return TokenAnalysis(
             riskControlLevel = data?.get("riskControlLevel")?.jsonPrimitive?.content ?: "unknown",
             tokenTags = data?.get("tokenTags")?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList(),
@@ -82,72 +62,37 @@ class OkxSignalService(
         )
     }
 
-    /**
-     * Get developer reputation profile.
-     */
     suspend fun getDevProfile(chainId: String, devAddress: String): DevProfile {
+        if (apiKey.isBlank()) return DevProfile(0, 0, "unknown", false)
         val body = """[{"chainId":"$chainId","devAddress":"$devAddress"}]"""
-
         try {
             val response = httpClient.post("$baseUrl/api/v6/dex/market/trenches/dev-profile") {
-                auth.sign(this, body)
-                setBody(body)
+                auth.sign(this, body); setBody(body)
             }
-            val root = json.parseToJsonElement(response.bodyAsText())
-            val data = root.jsonObject["data"]?.jsonArray?.firstOrNull()?.jsonObject
-
+            val data = json.parseToJsonElement(response.body<String>()).jsonObject["data"]?.jsonArray?.firstOrNull()?.jsonObject
             return DevProfile(
                 totalLaunches = data?.get("totalLaunches")?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
                 rugCount = data?.get("rugCount")?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
                 avgLifetime = data?.get("avgLifetime")?.jsonPrimitive?.content ?: "unknown",
                 rugHistory = (data?.get("rugCount")?.jsonPrimitive?.content?.toIntOrNull() ?: 0) > 0
             )
-        } catch (e: Exception) {
-            // Trenches API may not be available in all environments
-            return DevProfile(0, 0, "unknown", false)
-        }
+        } catch (e: Exception) { return DevProfile(0, 0, "unknown", false) }
     }
 
-    /**
-     * Connect to real-time signal WebSocket.
-     * Returns a cold Flow that emits signals as they arrive.
-     * Uses OkxWebSocket with auto-reconnect and exponential backoff.
-     */
     fun signalStream(chainId: String): Flow<SignalData> {
-        val ws = OkxWebSocket(
-            apiKey = apiKey,
-            secretKey = secretKey,
-            passphrase = passphrase
-        )
+        if (apiKey.isBlank()) return emptyFlow()
+        val ws = OkxWebSocket(apiKey, secretKey, passphrase)
         return ws.signalStream(chainId)
     }
 }
 
-// ─── Data classes ─────────────────────────────────────
-
 data class SignalData(
-    val tokenAddress: String,
-    val tokenSymbol: String,
-    val chainId: String,
-    val marketCapUsd: String,
-    val amountUsd: String,
-    val walletType: String,
-    val triggerWallets: List<String>,
-    val soldRatio: String
+    val tokenAddress: String, val tokenSymbol: String, val chainId: String,
+    val marketCapUsd: String, val amountUsd: String, val walletType: String,
+    val triggerWallets: List<String>, val soldRatio: String
 )
-
-data class DevProfile(
-    val totalLaunches: Int,
-    val rugCount: Int,
-    val avgLifetime: String,
-    val rugHistory: Boolean
-)
-
+data class DevProfile(val totalLaunches: Int, val rugCount: Int, val avgLifetime: String, val rugHistory: Boolean)
 data class TokenAnalysis(
-    val riskControlLevel: String,
-    val tokenTags: List<String>,
-    val holders: Int,
-    val top10HolderRatio: Double,
-    val bundleHoldingRatio: Double,
-    val liquidityLocked: Boolean
+    val riskControlLevel: String, val tokenTags: List<String>, val holders: Int,
+    val top10HolderRatio: Double, val bundleHoldingRatio: Double, val liquidityLocked: Boolean
 )

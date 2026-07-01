@@ -38,12 +38,13 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.1.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
 
-    // Database
+    // Database (PostgreSQL for production, H2 for local dev)
     implementation("org.jetbrains.exposed:exposed-core:0.57.0")
     implementation("org.jetbrains.exposed:exposed-dao:0.57.0")
     implementation("org.jetbrains.exposed:exposed-jdbc:0.57.0")
     implementation("org.jetbrains.exposed:exposed-java-time:0.57.0")
     implementation("org.postgresql:postgresql:42.7.4")
+    implementation("com.h2database:h2:2.3.232")
     implementation("com.zaxxer:HikariCP:6.2.1")
 
     // Redis

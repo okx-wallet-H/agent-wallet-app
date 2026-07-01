@@ -1,29 +1,29 @@
 package com.agentwallet
 
 import com.agentwallet.api.*
+import com.agentwallet.auth.*
 import com.agentwallet.config.AppConfig
 import com.agentwallet.plugins.*
+import io.ktor.server.engine.*
+import io.ktor.server.netty.*
+import io.ktor.server.routing.*
 
 fun main() {
     val config = AppConfig.fromEnv()
-
-    // Initialize database (PostgreSQL + Redis + auto-create tables)
     DatabaseFactory.init(config)
 
-    io.ktor.server.engine.embeddedServer(
-        io.ktor.server.netty.Netty,
-        port = config.port,
-        host = config.host
-    ) {
+    embeddedServer(Netty, port = config.port, host = config.host) {
         configureSerialization()
         configureStatusPages()
         configureAuth(config)
         configureWebSockets()
 
-        authRoutes(config)
-        chatRoutes(config)
-        strategyRoutes()
-        portfolioRoutes()
-        signalRoutes()
+        routing {
+            authRoutes(config)
+            chatRoutes(config)
+            strategyRoutes()
+            portfolioRoutes()
+            signalRoutes()
+        }
     }.start(wait = true)
 }

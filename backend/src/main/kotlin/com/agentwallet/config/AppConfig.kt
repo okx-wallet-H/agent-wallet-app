@@ -21,17 +21,22 @@ data class AppConfig(
     val anthropicApiKey: String,
     val llmModel: String
 ) {
+    /** Detect if we're in production mode (all external services configured). */
+    fun isProduction(): Boolean {
+        return dbUrl.contains("postgresql") && !anthropicApiKey.isBlank()
+    }
+
     companion object {
         fun fromEnv(): AppConfig = AppConfig(
             host       = env("HOST", "0.0.0.0"),
             port       = env("PORT", "8080").toInt(),
-            jwtSecret  = env("JWT_SECRET", "change-me-in-production"),
+            jwtSecret  = env("JWT_SECRET", "dev-secret-change-in-production-32chars"),
             jwtIssuer  = env("JWT_ISSUER", "agent-wallet"),
             jwtAudience = env("JWT_AUDIENCE", "agent-wallet-users"),
             jwtRealm   = env("JWT_REALM", "Agent Wallet"),
-            dbUrl      = env("DB_URL", "jdbc:postgresql://localhost:5432/agentwallet"),
-            dbUser     = env("DB_USER", "agentwallet"),
-            dbPassword = env("DB_PASSWORD", "agentwallet"),
+            dbUrl      = env("DB_URL", "jdbc:h2:mem:agentwallet"),
+            dbUser     = env("DB_USER", "sa"),
+            dbPassword = env("DB_PASSWORD", ""),
             redisHost  = env("REDIS_HOST", "localhost"),
             redisPort  = env("REDIS_PORT", "6379").toInt(),
             okxApiKey     = env("OKX_API_KEY", ""),
