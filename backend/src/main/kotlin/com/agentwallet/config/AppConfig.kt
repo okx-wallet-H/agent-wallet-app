@@ -50,6 +50,6 @@ data class AppConfig(
         )
 
         private fun env(key: String, default: String): String =
-            System.getenv(key) ?: default
+            System.getenv(key) ?: System.getProperty(key) ?: default
     }
 }
