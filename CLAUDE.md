@@ -90,6 +90,11 @@ agent-wallet/
 - [x] 用户认证完善（PostgreSQL 持久化）
 - [x] 端到端测试（RiskEngine + OkxAuth + ChatRoutes）
 - [x] Android 网络层（ApiClient + Auth + ChatViewModel）
-- [ ] OKX WebSocket 实时信号（SignalAgent signalStream）
-- [ ] Coinbase CDP REST API 真实集成
-- [ ] CI/CD
+- [x] CI/CD (GitHub Actions auto-build APK)
+- [x] Deployment (Docker Compose + deploy.sh)
+- [x] Login/Register UI
+- [x] Adaptive launcher icon
+- [ ] Android SDK (user's machine)
+- [ ] Cloud server deployment (user's machine)
+- [ ] OKX WebSocket real-time signals (network blocked here)
+- [ ] Coinbase CDP real integration (needs dev account)
