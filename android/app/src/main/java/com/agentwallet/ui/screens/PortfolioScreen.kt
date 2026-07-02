@@ -65,9 +65,9 @@ fun PortfolioScreen(modifier: Modifier = Modifier) {
     )
 
     val recentTx = listOf(
-        RecentTransaction("$NEWCOIN", "买入", "0.05 ETH", "+$45.20", true),
-        RecentTransaction("$OLDCOIN", "卖出", "1000 TOKEN", "-$12.30", false),
-        RecentTransaction("$MEME", "买入", "0.02 ETH", "+$8.50", true)
+        RecentTransaction("NEWPUMP", "买入", "0.05 ETH", "+$45.20", true),
+        RecentTransaction("MIDCAP", "卖出", "1000 TOKEN", "-$12.30", false),
+        RecentTransaction("MEME2", "买入", "0.02 ETH", "+$8.50", true)
     )
 
     LazyColumn(

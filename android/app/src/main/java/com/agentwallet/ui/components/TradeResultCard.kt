@@ -96,7 +96,7 @@ fun TradeResultCard(
         // Amount
         Text(
             text = "${message.amount} ${message.token}",
-            style = MonoStyle,
+            style = com.agentwallet.ui.theme.MonoStyle,
             color = TextPrimary
         )
         Text(
@@ -120,7 +120,7 @@ fun TradeResultCard(
             )
             Text(
                 text = message.txHash,
-                style = MonoSmallStyle,
+                style = com.agentwallet.ui.theme.MonoSmallStyle,
                 color = TextSecondary,
                 maxLines = 1
             )
@@ -133,7 +133,7 @@ fun TradeResultCard(
 private fun PreviewTradeResult() {
     TradeResultCard(
         message = ChatMessage.TradeResult(
-            token = "$NEWCOIN",
+            token = "NEWCOIN",
             action = TradeAction.BUY,
             amount = "0.05 ETH",
             price = "$3,420",

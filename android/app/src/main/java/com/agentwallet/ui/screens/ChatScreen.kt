@@ -1,6 +1,7 @@
 package com.agentwallet.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
@@ -135,27 +136,6 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
                     item { Spacer(Modifier.height(Spacing.xl)) }
                 }
             }
-
-            // Scroll-to-bottom FAB
-            AnimatedVisibility(
-                visible = showScrollButton,
-                enter = fadeIn() + slideInVertically { it },
-                modifier = Modifier.align(Alignment.BottomEnd)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .padding(Spacing.lg)
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(Accent)
-                        .clickableNoRipple {
-                            // scroll to bottom
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("↓", color = androidx.compose.ui.graphics.Color.White)
-                }
-            }
         }
 
         // ─── Input bar ──────────────────────
@@ -209,15 +189,6 @@ fun MessageRenderer(message: ChatMessage) {
     }
 }
 
-@Composable
-private fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier {
-    return this.then(
-        androidx.compose.foundation.clickable(
-            indication = null,
-            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-        ) { onClick() }
-    )
-}
 
 @Preview(showBackground = true, backgroundColor = 0xFF09090D)
 @Composable

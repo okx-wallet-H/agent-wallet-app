@@ -1,6 +1,8 @@
 package com.agentwallet.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -66,7 +68,7 @@ fun TradeConfirmationCard(
         Spacer(Modifier.height(Spacing.xs))
         Text(
             text = "${message.amount} ${message.fromToken}  →  ~${message.toAmount} ${message.token}",
-            style = MonoStyle,
+            style = com.agentwallet.ui.theme.MonoStyle,
             color = TextSecondary
         )
 
@@ -147,7 +149,7 @@ private fun SecurityCheckIndicator(check: SecurityCheck) {
 private fun PreviewTradeConfirmation() {
     TradeConfirmationCard(
         message = ChatMessage.TradeConfirmation(
-            token = "$NEWCOIN",
+            token = "NEWCOIN",
             chain = "Ethereum",
             amount = "0.05",
             fromToken = "ETH",

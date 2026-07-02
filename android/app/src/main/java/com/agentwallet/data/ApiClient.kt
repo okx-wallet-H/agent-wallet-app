@@ -14,7 +14,7 @@ import kotlinx.serialization.json.Json
 /**
  * HTTP client for the Agent Wallet backend.
  */
-class ApiClient(private val baseUrl: String = "http://10.0.2.2:8080") {
+class ApiClient(private val baseUrl: String = "http://147.182.160.240:8080") {
 
     private var authToken: String? = null
 

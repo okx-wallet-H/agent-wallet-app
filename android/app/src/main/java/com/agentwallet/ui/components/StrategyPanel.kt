@@ -151,7 +151,7 @@ private fun StatItem(label: String, value: String, isPnl: Boolean = false) {
         Spacer(Modifier.height(Spacing.xs))
         Text(
             text = value,
-            style = MonoStyle.copy(fontSize = androidx.compose.ui.unit.TextUnit.Unspecified),
+            style = com.agentwallet.ui.theme.MonoStyle.copy(fontSize = androidx.compose.ui.unit.TextUnit.Unspecified),
             color = when {
                 isPnl && value.startsWith("+") -> Profit
                 isPnl && value.startsWith("-") -> Loss

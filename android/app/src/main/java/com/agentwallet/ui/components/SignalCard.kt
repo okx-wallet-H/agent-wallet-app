@@ -89,7 +89,7 @@ fun SignalCard(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(message.chain, style = AgentWalletTypography.labelMedium, color = TextTertiary)
-            Text("💰 ${message.amountUsd}", style = MonoStyle, color = TextPrimary)
+            Text("💰 ${message.amountUsd}", style = com.agentwallet.ui.theme.MonoStyle, color = TextPrimary)
         }
 
         Spacer(Modifier.height(Spacing.sm))
@@ -160,7 +160,7 @@ private fun SecurityDot(label: String, passed: Boolean) {
 private fun PreviewSignalCard() {
     SignalCard(
         message = ChatMessage.SignalAlert(
-            token = "$NEWPUMP",
+            token = "NEWPUMP",
             chain = "Solana",
             amountUsd = "$12,500",
             walletCount = 3,

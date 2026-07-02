@@ -1,6 +1,7 @@
 package com.agentwallet.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,11 +59,11 @@ fun SignalScreen(modifier: Modifier = Modifier) {
     val filters = listOf("全部", "聪明钱", "KOL", "巨鲸", "新币")
 
     val signals = listOf(
-        SignalItem("$NEWPUMP", "Solana", "$12,500", 3, "聪明钱", "刚刚", "高"),
-        SignalItem("$MIDCOIN", "Ethereum", "$45,200", 1, "巨鲸", "5 分钟前", "中"),
-        SignalItem("$MEME", "Solana", "$8,900", 2, "聪明钱", "12 分钟前", "高"),
-        SignalItem("$SAFECOIN", "Ethereum", "$15,600", 4, "KOL", "25 分钟前", "中"),
-        SignalItem("$RUGCHECK", "Base", "$3,200", 1, "新币", "30 分钟前", "低")
+        SignalItem("NEWPUMP", "Solana", "$12,500", 3, "聪明钱", "刚刚", "高"),
+        SignalItem("MIDCOIN", "Ethereum", "$45,200", 1, "巨鲸", "5 分钟前", "中"),
+        SignalItem("MEME2", "Solana", "$8,900", 2, "聪明钱", "12 分钟前", "高"),
+        SignalItem("SAFECOIN", "Ethereum", "$15,600", 4, "KOL", "25 分钟前", "中"),
+        SignalItem("RUGCHECK", "Base", "$3,200", 1, "新币", "30 分钟前", "低")
     )
 
     LazyColumn(
@@ -107,7 +108,7 @@ fun SignalScreen(modifier: Modifier = Modifier) {
                             .clip(RoundedCornerShape(16.dp))
                             .background(if (isSelected) Accent else BackgroundSecondary)
                             .padding(horizontal = Spacing.md, vertical = Spacing.sm)
-                            .clickableNoRipple { selectedFilter = filter }
+                            .clickable { selectedFilter = filter }
                     ) {
                         Text(
                             text = filter,
@@ -186,15 +187,6 @@ private fun SignalListItem(signal: SignalItem) {
     }
 }
 
-@Composable
-private fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier {
-    return this.then(
-        androidx.compose.foundation.clickable(
-            indication = null,
-            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-        ) { onClick() }
-    )
-}
 
 @Preview(showBackground = true, backgroundColor = 0xFF09090D)
 @Composable
