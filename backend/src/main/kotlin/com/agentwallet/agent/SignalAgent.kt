@@ -33,11 +33,11 @@ class SignalAgent(
                             consecutiveErrors = 0
                             val analyzed = quickFilter(signal)
                             if (analyzed != null) {
-                                // Publish to Redis for downstream agents
+                                // Push to Redis list for downstream agents
                                 val redis = DatabaseFactory.redis()
                                 if (redis != null) {
                                     val payload = json.encodeToString(analyzed)
-                                    redis.resource.use { it.publish("signal:new", payload) }
+                                    redis.resource.use { it.lpush("signal:new", payload) }
                                 }
                                 logger.info("📡 High-conf signal: ${analyzed.tokenSymbol} (${analyzed.amountUsd})")
                             }
