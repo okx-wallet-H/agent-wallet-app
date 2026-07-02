@@ -31,6 +31,27 @@ services:
       timeout: 3s
       retries: 5
 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: agentwallet-api
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - DB_URL=jdbc:postgresql://postgres:5432/agentwallet
+      - DB_USER=agentwallet
+      - DB_PASSWORD=agentwallet
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   pgdata:
   redisdata:

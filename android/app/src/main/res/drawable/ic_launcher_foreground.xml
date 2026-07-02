@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Agent Wallet launcher icon — gradient circle with "AW" monogram -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Background circle with brand gradient -->
+    <group>
+        <path
+            android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0"
+            android:fillColor="#6C5CE7" />
+    </group>
+
+    <!-- "AW" text -->
+    <group
+        android:translateX="30"
+        android:translateY="42">
+        <path
+            android:pathData="M0,12 L8,-12 L16,12 M4,0 L12,0 M22,-12 L22,12 M22,-12 L34,12 M22,0 L30,0"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="3"
+            android:fillColor="#00000000"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
+</vector>
