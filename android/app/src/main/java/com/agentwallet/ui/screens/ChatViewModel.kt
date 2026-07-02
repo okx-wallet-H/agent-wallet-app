@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.agentwallet.data.*
+import com.agentwallet.util.MarkdownUtil
 import com.agentwallet.ui.components.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -136,7 +137,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun mapDtoToUiMessage(dto: ChatMessageDto): ChatMessage {
         return when (dto.type) {
-            "text" -> ChatMessage.Text(content = dto.content, isUser = dto.role == "user")
+            "text" -> ChatMessage.Text(content = MarkdownUtil.stripMarkdown(dto.content), isUser = dto.role == "user")
 
             "trade_confirmation" -> {
                 val data = dto.data ?: return ChatMessage.Text(dto.content, false)
