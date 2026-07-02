@@ -125,7 +125,7 @@ class AnthropicLlmClient(
             }
             put("messages", JsonArray(msgArray))
             if (stream) put("stream", true)
-            if (tools != null) {
+            if (tools != null && tools.isNotEmpty()) {
                 put("tools", JsonArray(tools.map { tool ->
                     buildJsonObject {
                         put("name", tool.name)
@@ -133,6 +133,7 @@ class AnthropicLlmClient(
                         put("input_schema", tool.inputSchema)
                     }
                 }))
+                put("tool_choice", buildJsonObject { put("type", "auto") })
             }
         }
 
@@ -141,32 +142,35 @@ class AnthropicLlmClient(
 
     private fun parseResponse(responseBody: String): LlmResponse {
         val root = json.parseToJsonElement(responseBody).jsonObject
+        val stopReason = root["stop_reason"]?.jsonPrimitive?.content ?: ""
 
-        val content = root["content"]?.jsonArray?.firstOrNull()?.jsonObject
-        val contentType = content?.get("type")?.jsonPrimitive?.content
+        val contentArray = root["content"]?.jsonArray ?: return LlmResponse(responseBody, null)
 
-        return when (contentType) {
-            "text" -> LlmResponse(
-                content = content?.get("text")?.jsonPrimitive?.content,
+        // Check all content blocks for tool_use (not just first)
+        val toolUses = contentArray.filter {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "tool_use"
+        }
+        val textBlocks = contentArray.filter {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "text"
+        }
+
+        return if (toolUses.isNotEmpty()) {
+            LlmResponse(
+                content = textBlocks.firstOrNull()?.jsonObject?.get("text")?.jsonPrimitive?.content,
+                toolCalls = toolUses.map { tool ->
+                    val obj = tool.jsonObject
+                    LlmToolCall(
+                        id = obj["id"]?.jsonPrimitive?.content ?: "",
+                        name = obj["name"]?.jsonPrimitive?.content ?: "",
+                        arguments = obj["input"]?.jsonObject ?: JsonObject(emptyMap())
+                    )
+                }
+            )
+        } else {
+            LlmResponse(
+                content = textBlocks.firstOrNull()?.jsonObject?.get("text")?.jsonPrimitive?.content ?: responseBody,
                 toolCalls = null
             )
-            "tool_use" -> {
-                val toolUses = root["content"]?.jsonArray?.filter {
-                    it.jsonObject["type"]?.jsonPrimitive?.content == "tool_use"
-                } ?: emptyList()
-
-                LlmResponse(
-                    content = root["stop_reason"]?.jsonPrimitive?.content,
-                    toolCalls = toolUses.map { tool ->
-                        LlmToolCall(
-                            id = tool.jsonObject["id"]?.jsonPrimitive?.content ?: "",
-                            name = tool.jsonObject["name"]?.jsonPrimitive?.content ?: "",
-                            arguments = tool.jsonObject["input"]?.jsonObject ?: JsonObject(emptyMap())
-                        )
-                    }
-                )
-            }
-            else -> LlmResponse(content = responseBody, toolCalls = null)
         }
     }
 }

@@ -40,6 +40,11 @@ object DatabaseFactory {
                 ConversationsTable,
                 TradeHistoryTable
             )
+            // Ensure anonymous user exists (for unauthenticated requests)
+            val anonExists = com.agentwallet.models.UserRepository.findByEmail("anonymous@local") != null
+            if (!anonExists) {
+                com.agentwallet.models.UserRepository.create("anonymous@local", "nopass")
+            }
         }
     }
 

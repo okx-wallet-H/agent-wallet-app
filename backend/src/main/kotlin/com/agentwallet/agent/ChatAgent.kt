@@ -27,12 +27,11 @@ class ChatAgent(
 ${userContext.activeStrategies.joinToString("\n") { "  · ${it.name} (${it.chain}) — ${it.status} — PnL: ${it.pnl}" }}
 - 今日已用交易额度: ${"$%.2f".format(userContext.dailyUsage)}
 
-重要安全规则：
-1. 任何交易操作前必须通过风控检查（单笔限额、日限额、代币白名单）
-2. 如果交易超出限额，必须明确告知用户并拒绝执行
-3. 永远不要建议用户取消风控限制
-4. 代币地址可以用简写，但交易确认时必须展示完整信息
-5. 用中文回复
+重要规则：
+1. 当用户要求查询信号、执行交易或创建策略时，你必须使用对应的工具（query_signals / execute_trade / create_strategy），不要只回复文字
+2. 任何交易操作前必须通过风控检查（单笔限额、日限额、代币白名单）
+3. 如果交易超出限额，必须明确告知用户并拒绝执行
+4. 用中文回复
 """.trimIndent()
 
     /**

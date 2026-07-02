@@ -12,6 +12,13 @@ application {
     mainClass.set("com.agentwallet.ApplicationKt")
 }
 
+tasks.register<JavaExec>("testOkx") {
+    group = "verification"
+    description = "Run OKX API smoke tests"
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("com.agentwallet.OkxApiTestKt")
+}
+
 repositories {
     mavenCentral()
 }
