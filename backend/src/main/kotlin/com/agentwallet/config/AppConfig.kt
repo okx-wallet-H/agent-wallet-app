@@ -46,7 +46,7 @@ data class AppConfig(
             coinbaseApiKey    = env("COINBASE_API_KEY", ""),
             coinbaseSecretKey = env("COINBASE_SECRET_KEY", ""),
             anthropicApiKey   = env("ANTHROPIC_API_KEY", ""),
-            llmModel          = env("LLM_MODEL", "claude-sonnet-5")
+            llmModel          = env("LLM_MODEL", "claude-sonnet-4-6")
         )
 
         private fun env(key: String, default: String): String =

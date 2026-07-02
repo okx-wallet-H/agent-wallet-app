@@ -106,7 +106,11 @@ class AnthropicLlmClient(
         model: String,
         stream: Boolean
     ): String {
-        val msgArray = messages.map { msg ->
+        // Extract system messages — Anthropic requires top-level "system" param
+        val systemMessages = messages.filter { it.role == "system" }
+        val chatMessages = messages.filter { it.role != "system" }
+
+        val msgArray = chatMessages.map { msg ->
             buildJsonObject {
                 put("role", msg.role)
                 put("content", msg.content)
@@ -116,6 +120,9 @@ class AnthropicLlmClient(
         val body = buildJsonObject {
             put("model", model)
             put("max_tokens", 4096)
+            if (systemMessages.isNotEmpty()) {
+                put("system", systemMessages.joinToString("\n") { it.content })
+            }
             put("messages", JsonArray(msgArray))
             if (stream) put("stream", true)
             if (tools != null) {

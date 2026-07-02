@@ -9,7 +9,8 @@ import java.util.UUID
 
 private val json = Json { ignoreUnknownKeys = true; prettyPrint = false }
 
-// ─── User Repository ──────────────────────────────────
+fun safeUuid(id: String): UUID = try { UUID.fromString(id) } catch (e: Exception) { UUID(0, 0) }
+val NIL_UUID = UUID(0, 0)
 
 object UserRepository {
 
@@ -27,12 +28,12 @@ object UserRepository {
     }
 
     fun findById(id: String): User? = transaction {
-        UsersTable.selectAll().where { UsersTable.id eq UUID.fromString(id) }
+        UsersTable.selectAll().where { UsersTable.id eq safeUuid(id) }
             .singleOrNull()?.let { rowToUser(it) }
     }
 
     fun updateWalletId(userId: String, walletId: String) = transaction {
-        UsersTable.update({ UsersTable.id eq UUID.fromString(userId) }) {
+        UsersTable.update({ UsersTable.id eq safeUuid(userId) }) {
             it[coinbaseWalletId] = walletId
         }
     }
@@ -46,14 +47,12 @@ object UserRepository {
     )
 }
 
-// ─── Strategy Repository ──────────────────────────────
-
 object StrategyRepository {
 
     fun create(strategy: Strategy): Strategy = transaction {
         val paramsJson = json.encodeToString(strategy.params)
         val id = StrategiesTable.insertAndGetId {
-            it[userId] = UUID.fromString(strategy.userId)
+            it[userId] = safeUuid(strategy.userId)
             it[name] = strategy.name
             it[type] = strategy.type.name
             it[chain] = strategy.chain
@@ -65,20 +64,20 @@ object StrategyRepository {
 
     fun findByUserId(userId: String): List<Strategy> = transaction {
         StrategiesTable.selectAll()
-            .where { StrategiesTable.userId eq UUID.fromString(userId) }
+            .where { StrategiesTable.userId eq safeUuid(userId) }
             .orderBy(StrategiesTable.createdAt, SortOrder.DESC)
             .map { rowToStrategy(it) }
     }
 
     fun findById(id: String): Strategy? = transaction {
         StrategiesTable.selectAll()
-            .where { StrategiesTable.id eq UUID.fromString(id) }
+            .where { StrategiesTable.id eq safeUuid(id) }
             .singleOrNull()?.let { rowToStrategy(it) }
     }
 
     fun update(id: String, strategy: Strategy): Strategy = transaction {
         val paramsJson = json.encodeToString(strategy.params)
-        StrategiesTable.update({ StrategiesTable.id eq UUID.fromString(id) }) {
+        StrategiesTable.update({ StrategiesTable.id eq safeUuid(id) }) {
             it[name] = strategy.name
             it[status] = strategy.status.name
             it[StrategiesTable.params] = paramsJson
@@ -88,16 +87,13 @@ object StrategyRepository {
     }
 
     fun delete(id: String) = transaction {
-        StrategiesTable.deleteWhere { StrategiesTable.id eq UUID.fromString(id) }
+        StrategiesTable.deleteWhere { StrategiesTable.id eq safeUuid(id) }
     }
 
     private fun rowToStrategy(row: ResultRow): Strategy {
         val paramsJson = row[StrategiesTable.params]
-        val params = try {
-            json.decodeFromString<StrategyParams>(paramsJson)
-        } catch (e: Exception) {
-            StrategyParams(maxPerTx = 100.0, dailyLimit = 500.0)
-        }
+        val params = try { json.decodeFromString<StrategyParams>(paramsJson) }
+            catch (e: Exception) { StrategyParams(maxPerTx = 100.0, dailyLimit = 500.0) }
         return Strategy(
             id = row[StrategiesTable.id].value.toString(),
             userId = row[StrategiesTable.userId].value.toString(),
@@ -114,17 +110,14 @@ object StrategyRepository {
     }
 }
 
-// ─── Trade History Repository ─────────────────────────
-
 object TradeHistoryRepository {
-
     fun create(
         userId: String, strategyId: String?, token: String, action: String,
         amount: Double, price: Double, txHash: String?, pnl: Double?, signalSource: String?
     ) = transaction {
         TradeHistoryTable.insert {
-            it[TradeHistoryTable.userId] = UUID.fromString(userId)
-            it[TradeHistoryTable.strategyId] = strategyId?.let { UUID.fromString(it) }
+            it[TradeHistoryTable.userId] = safeUuid(userId)
+            it[TradeHistoryTable.strategyId] = strategyId?.let { safeUuid(it) }
             it[TradeHistoryTable.token] = token
             it[TradeHistoryTable.action] = action
             it[TradeHistoryTable.amount] = amount
@@ -137,7 +130,7 @@ object TradeHistoryRepository {
 
     fun findByUserId(userId: String, limit: Int = 20): List<Map<String, Any?>> = transaction {
         TradeHistoryTable.selectAll()
-            .where { TradeHistoryTable.userId eq UUID.fromString(userId) }
+            .where { TradeHistoryTable.userId eq safeUuid(userId) }
             .orderBy(TradeHistoryTable.executedAt, SortOrder.DESC)
             .limit(limit)
             .map { row ->
@@ -154,45 +147,34 @@ object TradeHistoryRepository {
     }
 }
 
-// ─── Conversation Repository ──────────────────────────
-
 object ConversationRepository {
-
     fun upsert(conversationId: String, userId: String, messages: List<ChatMessage>) = transaction {
-        val existing = ConversationsTable.selectAll()
-            .where { ConversationsTable.id eq UUID.fromString(conversationId) }
-            .singleOrNull()
-
+        val cid = safeUuid(conversationId)
+        val existing = ConversationsTable.selectAll().where { ConversationsTable.id eq cid }.singleOrNull()
         if (existing != null) {
             val existingJson = existing[ConversationsTable.messages]
-            val existingMessages = try {
-                json.decodeFromString<List<ChatMessage>>(existingJson)
-            } catch (e: Exception) { emptyList() }
-
-            val updatedJson = json.encodeToString<List<ChatMessage>>(existingMessages + messages)
-            ConversationsTable.update({ ConversationsTable.id eq UUID.fromString(conversationId) }) {
+            val existingMessages = try { json.decodeFromString<List<ChatMessage>>(existingJson) } catch (e: Exception) { emptyList() }
+            val updatedJson = json.encodeToString(kotlinx.serialization.builtins.ListSerializer(ChatMessage.serializer()), existingMessages + messages)
+            ConversationsTable.update({ ConversationsTable.id eq cid }) {
                 it[ConversationsTable.messages] = updatedJson
                 it[updatedAt] = java.time.Instant.now()
             }
         } else {
             ConversationsTable.insert {
-                it[id] = UUID.fromString(conversationId)
-                it[ConversationsTable.userId] = UUID.fromString(userId)
-                val msgsJson = json.encodeToString(kotlinx.serialization.builtins.ListSerializer(ChatMessage.serializer()), messages)
-                it[ConversationsTable.messages] = msgsJson
+                it[id] = cid
+                it[ConversationsTable.userId] = safeUuid(userId)
+                it[ConversationsTable.messages] = json.encodeToString(kotlinx.serialization.builtins.ListSerializer(ChatMessage.serializer()), messages)
             }
         }
     }
 
     fun findByUserId(userId: String): List<Pair<String, List<ChatMessage>>> = transaction {
         ConversationsTable.selectAll()
-            .where { ConversationsTable.userId eq UUID.fromString(userId) }
+            .where { ConversationsTable.userId eq safeUuid(userId) }
             .orderBy(ConversationsTable.updatedAt, SortOrder.DESC)
             .map { row ->
                 val id = row[ConversationsTable.id].value.toString()
-                val msgs = try {
-                    json.decodeFromString<List<ChatMessage>>(row[ConversationsTable.messages])
-                } catch (e: Exception) { emptyList() }
+                val msgs = try { json.decodeFromString<List<ChatMessage>>(row[ConversationsTable.messages]) } catch (e: Exception) { emptyList() }
                 id to msgs
             }
     }
