@@ -11,7 +11,10 @@ import org.jetbrains.exposed.sql.javatime.timestamp
 object UsersTable : UUIDTable("users") {
     val email          = varchar("email", 255).uniqueIndex()
     val passwordHash   = varchar("password_hash", 255)
-    val coinbaseWalletId = varchar("coinbase_wallet_id", 255).nullable()
+    val walletIndex    = integer("wallet_index").nullable()       // HD derivation index
+    val evmAddress     = varchar("evm_address", 255).nullable()   // Ethereum wallet
+    val solanaAddress  = varchar("solana_address", 255).nullable() // Solana wallet
+    val encryptedKey   = binary("encrypted_key", 1024).nullable() // AES-256-GCM encrypted private key
     val createdAt      = timestamp("created_at").defaultExpression(CurrentTimestamp)
 }
 

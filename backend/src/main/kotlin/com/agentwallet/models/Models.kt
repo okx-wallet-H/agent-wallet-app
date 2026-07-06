@@ -10,7 +10,9 @@ data class User(
     val id: String = UUID.randomUUID().toString(),
     val email: String,
     val passwordHash: String,
-    val coinbaseWalletId: String? = null,
+    val walletIndex: Int? = null,
+    val evmAddress: String? = null,
+    val solanaAddress: String? = null,
     val createdAt: Long = System.currentTimeMillis()
 )
 
