@@ -13,60 +13,39 @@ import java.security.SecureRandom
 
 fun Route.authRoutes(config: AppConfig) {
     val jwtService = JwtService(config)
-
-    // Initialize HD wallet service
     val mnemonic = System.getenv("MASTER_MNEMONIC") ?: run {
         val new = HdWalletService.generateMnemonic()
         println("⚠️  No MASTER_MNEMONIC set. Generated: $new")
-        println("    Add this to your .env file as MASTER_MNEMONIC=<value>")
         new
     }
-    val encKey = System.getenv("WALLET_ENCRYPTION_KEY")
-        ?.toByteArray()
+    val encKey = System.getenv("WALLET_ENCRYPTION_KEY")?.toByteArray()
         ?: SecureRandom().run { ByteArray(32).also { nextBytes(it) } }
-
     val walletService = HdWalletService(encKey)
 
     post("/api/auth/register") {
         val req = call.receive<RegisterRequest>()
-
-        val existing = UserRepository.findByEmail(req.email)
-        if (existing != null) {
+        if (UserRepository.findByEmail(req.email) != null) {
             call.respond(HttpStatusCode.Conflict, mapOf("error" to "Email already registered"))
             return@post
         }
-
-        // Create HD wallet for this user
         val walletIndex = UserRepository.nextWalletIndex()
         val wallet = walletService.createUserWallet(walletIndex, mnemonic)
-
         val hash = BCrypt.withDefaults().hashToString(12, req.password.toCharArray())
         val user = UserRepository.create(
-            email = req.email,
-            passwordHash = hash,
-            walletIndex = walletIndex,
-            evmAddress = wallet.evmAddress,
-            solanaAddress = wallet.solanaAddress,
+            email = req.email, passwordHash = hash, walletIndex = walletIndex,
+            evmAddress = wallet.evmAddress, solanaAddress = wallet.solanaAddress,
             encryptedKey = wallet.encryptedPrivateKey
         )
-
         val token = jwtService.generateToken(JwtPayload(user.id, user.email))
-        call.respond(HttpStatusCode.Created, mapOf(
-            "token" to token,
-            "user" to mapOf(
-                "id" to user.id,
-                "email" to user.email,
-                "evmAddress" to wallet.evmAddress,
-                "solanaAddress" to wallet.solanaAddress,
-                "walletIndex" to walletIndex
-            )
+        call.respond(HttpStatusCode.Created, RegisterResponse(
+            token = token,
+            user = WalletUserInfo(user.id, user.email, wallet.evmAddress, wallet.solanaAddress, walletIndex.toString())
         ))
     }
 
     post("/api/auth/login") {
         val req = call.receive<LoginRequest>()
-        val user = UserRepository.findByEmail(req.email)
-        if (user == null) {
+        val user = UserRepository.findByEmail(req.email) ?: run {
             call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid credentials"))
             return@post
         }
@@ -76,15 +55,9 @@ fun Route.authRoutes(config: AppConfig) {
             return@post
         }
         val token = jwtService.generateToken(JwtPayload(user.id, user.email))
-        call.respond(mapOf(
-            "token" to token,
-            "user" to mapOf(
-                "id" to user.id,
-                "email" to user.email,
-                "evmAddress" to (user.evmAddress ?: ""),
-                "solanaAddress" to (user.solanaAddress ?: ""),
-                "walletIndex" to (user.walletIndex ?: 0)
-            )
+        call.respond(RegisterResponse(
+            token = token,
+            user = WalletUserInfo(user.id, user.email, user.evmAddress ?: "", user.solanaAddress ?: "", (user.walletIndex ?: 0).toString())
         ))
     }
 }

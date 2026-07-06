@@ -103,6 +103,20 @@ data class RiskDecision(
 @Serializable
 data class RiskCheck(val label: String, val passed: Boolean)
 
+// ─── Auth Responses ──────────────────────────────────
+
+@Serializable
+data class RegisterResponse(val token: String, val user: WalletUserInfo)
+
+@Serializable
+data class WalletUserInfo(
+    val id: String,
+    val email: String,
+    val evmAddress: String,
+    val solanaAddress: String,
+    val walletIndex: String
+)
+
 // ─── JWT ─────────────────────────────────────────────
 
 @Serializable
