@@ -96,7 +96,13 @@ data class RegisterRequest(val email: String, val password: String)
 data class AuthResponseDto(val token: String, val user: UserDto)
 
 @Serializable
-data class UserDto(val id: String, val email: String, val coinbaseWalletId: String? = null)
+data class UserDto(
+    val id: String,
+    val email: String,
+    val evmAddress: String = "",
+    val solanaAddress: String = "",
+    val walletIndex: Int = 0
+)
 
 @Serializable
 data class ChatRequestDto(val message: String, val conversationId: String? = null)

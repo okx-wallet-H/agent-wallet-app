@@ -18,7 +18,9 @@ data class ChatUiState(
     val isStreaming: Boolean = false,
     val connected: Boolean = true,
     val isLoggedIn: Boolean = false,
-    val email: String? = null
+    val email: String? = null,
+    val evmAddress: String? = null,
+    val solanaAddress: String? = null
 )
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
@@ -57,12 +59,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             val response = api.login(email, password)
             api.setToken(response.token)
             authRepo.saveAuth(response.token, email)
-            _uiState.update { it.copy(isLoggedIn = true, email = email) }
+            _uiState.update { it.copy(
+                isLoggedIn = true, email = email,
+                evmAddress = response.user.evmAddress,
+                solanaAddress = response.user.solanaAddress
+            )}
             addWelcomeMessage()
-            null // success
-        } catch (e: Exception) {
-            e.message ?: "登录失败"
-        }
+            null
+        } catch (e: Exception) { e.message ?: "登录失败" }
     }
 
     suspend fun register(email: String, password: String): String? {
@@ -70,12 +74,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             val response = api.register(email, password)
             api.setToken(response.token)
             authRepo.saveAuth(response.token, email)
-            _uiState.update { it.copy(isLoggedIn = true, email = email) }
+            _uiState.update { it.copy(
+                isLoggedIn = true, email = email,
+                evmAddress = response.user.evmAddress,
+                solanaAddress = response.user.solanaAddress
+            )}
             addWelcomeMessage()
-            null // success
-        } catch (e: Exception) {
-            e.message ?: "注册失败"
-        }
+            null
+        } catch (e: Exception) { e.message ?: "注册失败" }
     }
 
     fun logout() {
