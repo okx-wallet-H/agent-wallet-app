@@ -10,6 +10,9 @@ import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * HTTP client for the Agent Wallet backend.
@@ -39,22 +42,14 @@ class ApiClient(private val baseUrl: String = "http://147.182.160.240:8080") {
 
     // ─── Auth ──────────────────────────────────────
 
-    suspend fun login(email: String, password: String): Map<String, Any?> {
-        return httpClient.post("$baseUrl/api/auth/login") {
-            setBody(LoginRequest(email, password))
-        }.body()
+    suspend fun sendOtp(email: String): JsonObject {
+        val r: HttpResponse = httpClient.post("$baseUrl/api/auth/register") { setBody(EmailOnlyRequest(email)) }
+        return Json.parseToJsonElement(r.bodyAsText()).jsonObject
     }
 
-    suspend fun sendOtp(email: String): Map<String, Any?> {
-        return httpClient.post("$baseUrl/api/auth/register") {
-            setBody(EmailOnlyRequest(email))
-        }.body()
-    }
-
-    suspend fun verifyOtp(email: String, otp: String): Map<String, Any?> {
-        return httpClient.post("$baseUrl/api/auth/verify-otp") {
-            setBody(OtpVerifyRequest(email, otp))
-        }.body()
+    suspend fun verifyOtp(email: String, otp: String): JsonObject {
+        val r: HttpResponse = httpClient.post("$baseUrl/api/auth/verify-otp") { setBody(OtpVerifyRequest(email, otp)) }
+        return Json.parseToJsonElement(r.bodyAsText()).jsonObject
     }
 
     // ─── Chat ──────────────────────────────────────

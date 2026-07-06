@@ -54,22 +54,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    suspend fun login(email: String, password: String): String? {
-        return try {
-            val response = api.login(email, password)
-            if (response.containsKey("status") && response["status"] == "otp_required") {
-                return "需要重新验证，验证码已发送"
-            }
-            val token = response["token"] as? String ?: return "登录失败"
-            val user = response["user"] as? Map<*,*> ?: return "登录失败"
-            api.setToken(token)
-            authRepo.saveAuth(token, email)
-            _uiState.update { it.copy(isLoggedIn = true, email = email, evmAddress = user["evmAddress"] as? String) }
-            addWelcomeMessage()
-            null
-        } catch (e: Exception) { e.message ?: "登录失败" }
-    }
-
     suspend fun sendOtp(email: String): String? {
         return try {
             api.sendOtp(email)
@@ -80,11 +64,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun verifyOtp(email: String, otp: String): String? {
         return try {
             val response = api.verifyOtp(email, otp)
-            val token = response["token"] as? String ?: return "验证失败"
-            val user = response["user"] as? Map<*,*> ?: return "验证失败"
+            val token = response["token"]?.jsonPrimitive?.content ?: return "验证失败"
+            val user = response["user"]?.jsonObject ?: return "验证失败"
             api.setToken(token)
             authRepo.saveAuth(token, email)
-            _uiState.update { it.copy(isLoggedIn = true, email = email, evmAddress = user["evmAddress"] as? String) }
+            _uiState.update { it.copy(
+                isLoggedIn = true, email = email,
+                evmAddress = user["evmAddress"]?.jsonPrimitive?.content
+            )}
             addWelcomeMessage()
             null
         } catch (e: Exception) { e.message ?: "验证码错误" }
