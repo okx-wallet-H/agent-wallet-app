@@ -10,9 +10,7 @@ data class User(
     val id: String = UUID.randomUUID().toString(),
     val email: String,
     val passwordHash: String,
-    val walletIndex: Int? = null,
-    val evmAddress: String? = null,
-    val solanaAddress: String? = null,
+    val onchainosVerified: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 )
 
@@ -102,20 +100,6 @@ data class RiskDecision(
 
 @Serializable
 data class RiskCheck(val label: String, val passed: Boolean)
-
-// ─── Auth Responses ──────────────────────────────────
-
-@Serializable
-data class RegisterResponse(val token: String, val user: WalletUserInfo)
-
-@Serializable
-data class WalletUserInfo(
-    val id: String,
-    val email: String,
-    val evmAddress: String,
-    val solanaAddress: String,
-    val walletIndex: String
-)
 
 // ─── JWT ─────────────────────────────────────────────
 

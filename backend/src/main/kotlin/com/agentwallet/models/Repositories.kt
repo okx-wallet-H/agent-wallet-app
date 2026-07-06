@@ -14,24 +14,12 @@ val NIL_UUID = UUID(0, 0)
 
 object UserRepository {
 
-    fun create(email: String, passwordHash: String, walletIndex: Int? = null,
-               evmAddress: String? = null, solanaAddress: String? = null,
-               encryptedKey: ByteArray? = null): User = transaction {
+    fun create(email: String, passwordHash: String): User = transaction {
         val id = UsersTable.insertAndGetId {
             it[UsersTable.email] = email
             it[UsersTable.passwordHash] = passwordHash
-            walletIndex?.let { idx -> it[UsersTable.walletIndex] = idx }
-            evmAddress?.let { a -> it[UsersTable.evmAddress] = a }
-            solanaAddress?.let { a -> it[UsersTable.solanaAddress] = a }
-            encryptedKey?.let { k -> it[UsersTable.encryptedKey] = k }
         }
-        User(id = id.value.toString(), email = email, passwordHash = passwordHash,
-             walletIndex = walletIndex, evmAddress = evmAddress, solanaAddress = solanaAddress)
-    }
-
-    /** Get the next available wallet index (count existing users). */
-    fun nextWalletIndex(): Int = transaction {
-        UsersTable.selectAll().count().toInt()
+        User(id = id.value.toString(), email = email, passwordHash = passwordHash)
     }
 
     fun findByEmail(email: String): User? = transaction {
@@ -44,18 +32,17 @@ object UserRepository {
             .singleOrNull()?.let { rowToUser(it) }
     }
 
-    fun getEncryptedKey(userId: String): ByteArray? = transaction {
-        UsersTable.selectAll().where { UsersTable.id eq safeUuid(userId) }
-            .singleOrNull()?.let { row -> row[UsersTable.encryptedKey] }
+    fun markVerified(userId: String) = transaction {
+        UsersTable.update({ UsersTable.id eq safeUuid(userId) }) {
+            it[onchainosVerified] = true
+        }
     }
 
     private fun rowToUser(row: ResultRow): User = User(
         id = row[UsersTable.id].value.toString(),
         email = row[UsersTable.email],
         passwordHash = row[UsersTable.passwordHash],
-        walletIndex = row[UsersTable.walletIndex],
-        evmAddress = row[UsersTable.evmAddress],
-        solanaAddress = row[UsersTable.solanaAddress],
+        onchainosVerified = row[UsersTable.onchainosVerified],
         createdAt = row[UsersTable.createdAt].toEpochMilli()
     )
 }

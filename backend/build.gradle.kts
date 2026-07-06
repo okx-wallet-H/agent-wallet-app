@@ -60,9 +60,6 @@ dependencies {
     // Security
     implementation("at.favre.lib:bcrypt:0.10.2")
 
-    // BIP-32/44 HD Wallet + Ethereum
-    implementation("org.web3j:core:4.12.1")
-
     // Logging
     implementation("ch.qos.logback:logback-classic:1.5.12")
 
