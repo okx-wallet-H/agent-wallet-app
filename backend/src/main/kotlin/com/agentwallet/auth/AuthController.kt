@@ -22,8 +22,8 @@ fun Route.authRoutes(config: AppConfig) {
 
     // Send OTP to email (register or login — same flow)
     post("/api/auth/register") {
-        val body = call.receive<Map<String, String>>()
-        val email = body["email"] ?: ""
+        val body = call.receive<EmailRequest>()
+        val email = body.email
 
         if (!email.contains("@")) {
             call.respondText(json.encodeToString(mapOf("error" to "Invalid email")),
@@ -86,6 +86,7 @@ fun Route.authRoutes(config: AppConfig) {
     }
 }
 
+@Serializable data class EmailRequest(val email: String)
 @Serializable data class OtpRequest(val email: String, val otp: String)
 @Serializable data class LoginResponse(val token: String, val user: UserInfo)
 @Serializable data class UserInfo(val id: String, val email: String, val evmAddress: String, val accountId: String, val isNew: Boolean = false)
