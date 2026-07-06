@@ -47,13 +47,13 @@ class ApiClient(private val baseUrl: String = "http://147.182.160.240:8080") {
 
     suspend fun sendOtp(email: String): Map<String, Any?> {
         return httpClient.post("$baseUrl/api/auth/register") {
-            setBody(mapOf("email" to email))
+            setBody(EmailOnlyRequest(email))
         }.body()
     }
 
     suspend fun verifyOtp(email: String, otp: String): Map<String, Any?> {
         return httpClient.post("$baseUrl/api/auth/verify-otp") {
-            setBody(mapOf("email" to email, "otp" to otp))
+            setBody(OtpVerifyRequest(email, otp))
         }.body()
     }
 
@@ -92,11 +92,10 @@ class ApiClient(private val baseUrl: String = "http://147.182.160.240:8080") {
 
 // ─── DTOs ────────────────────────────────────────────────
 
-@Serializable
-data class LoginRequest(val email: String, val password: String)
-
-@Serializable
-data class RegisterRequest(val email: String, val password: String)
+@Serializable data class EmailOnlyRequest(val email: String)
+@Serializable data class OtpVerifyRequest(val email: String, val otp: String)
+@Serializable data class LoginRequest(val email: String, val password: String)
+@Serializable data class RegisterRequest(val email: String, val password: String)
 
 @Serializable
 data class AuthResponseDto(val token: String, val user: UserDto)
