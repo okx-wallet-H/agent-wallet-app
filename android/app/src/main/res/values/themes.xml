@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.AgentWallet" parent="android:Theme.Material.NoActionBar">
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">#131318</item>
-        <item name="android:windowBackground">#09090D</item>
+    <style name="Theme.AgentWallet" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#F8F9FA</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:windowBackground">#F8F9FA</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>

@@ -39,15 +39,21 @@ class ApiClient(private val baseUrl: String = "http://147.182.160.240:8080") {
 
     // ─── Auth ──────────────────────────────────────
 
-    suspend fun login(email: String, password: String): AuthResponseDto {
+    suspend fun login(email: String, password: String): Map<String, Any?> {
         return httpClient.post("$baseUrl/api/auth/login") {
             setBody(LoginRequest(email, password))
         }.body()
     }
 
-    suspend fun register(email: String, password: String): AuthResponseDto {
+    suspend fun register(email: String, password: String): Map<String, Any?> {
         return httpClient.post("$baseUrl/api/auth/register") {
             setBody(RegisterRequest(email, password))
+        }.body()
+    }
+
+    suspend fun verifyOtp(email: String, otp: String): Map<String, Any?> {
+        return httpClient.post("$baseUrl/api/auth/verify-otp") {
+            setBody(mapOf("email" to email, "otp" to otp))
         }.body()
     }
 
