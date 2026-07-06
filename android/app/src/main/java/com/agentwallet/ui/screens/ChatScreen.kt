@@ -85,12 +85,12 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
                     .background(if (uiState.connected) Profit else com.agentwallet.ui.theme.Loss)
             )
             Spacer(Modifier.width(Spacing.sm))
-            Text(
-                text = "Agent Wallet",
-                style = AgentWalletTypography.titleMedium,
-                color = TextPrimary,
-                modifier = Modifier.weight(1f)
-            )
+            Column(Modifier.weight(1f)) {
+                Text(uiState.email ?: "Agent Wallet", style = AgentWalletTypography.titleMedium, color = TextPrimary)
+                uiState.evmAddress?.let {
+                    Text("${it.take(6)}...${it.takeLast(4)}", style = AgentWalletTypography.labelMedium, color = TextSecondary)
+                }
+            }
             Text(
                 text = if (uiState.connected) "已连接" else "重连中...",
                 style = AgentWalletTypography.labelMedium,

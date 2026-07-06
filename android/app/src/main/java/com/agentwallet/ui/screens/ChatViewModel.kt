@@ -70,7 +70,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             authRepo.saveAuth(token, email)
             _uiState.update { it.copy(
                 isLoggedIn = true, email = email,
-                evmAddress = user["evmAddress"]?.jsonPrimitive?.content
+                evmAddress = user["evmAddress"]?.jsonPrimitive?.content,
+                solanaAddress = user["solanaAddress"]?.jsonPrimitive?.content
             )}
             addWelcomeMessage()
             null

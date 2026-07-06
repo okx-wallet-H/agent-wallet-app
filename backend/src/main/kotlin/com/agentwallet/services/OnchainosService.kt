@@ -48,14 +48,14 @@ class OnchainosService(
         return exec(home, "wallet", "status")
     }
 
-    /** Get wallet addresses (EVM + Solana). */
+    /** Get wallet addresses (EVM + Solana). JSON by default. */
     fun getAddresses(userId: String): OnchainosResult {
         val home = sessionHome(userId)
-        return exec(home, "wallet", "addresses", "--format", "json")
+        return exec(home, "wallet", "addresses")
     }
 
     /** Get wallet balances. */
-    fun getBalance(userId: String): OnchainosResult {
+    fun getBalances(userId: String): OnchainosResult {
         val home = sessionHome(userId)
         return exec(home, "wallet", "balance")
     }
