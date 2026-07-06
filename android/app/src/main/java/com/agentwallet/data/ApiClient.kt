@@ -45,9 +45,9 @@ class ApiClient(private val baseUrl: String = "http://147.182.160.240:8080") {
         }.body()
     }
 
-    suspend fun register(email: String, password: String): Map<String, Any?> {
+    suspend fun sendOtp(email: String): Map<String, Any?> {
         return httpClient.post("$baseUrl/api/auth/register") {
-            setBody(RegisterRequest(email, password))
+            setBody(mapOf("email" to email))
         }.body()
     }
 

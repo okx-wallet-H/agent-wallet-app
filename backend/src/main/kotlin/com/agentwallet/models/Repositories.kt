@@ -14,12 +14,12 @@ val NIL_UUID = UUID(0, 0)
 
 object UserRepository {
 
-    fun create(email: String, passwordHash: String): User = transaction {
+    fun create(email: String): User = transaction {
         val id = UsersTable.insertAndGetId {
             it[UsersTable.email] = email
-            it[UsersTable.passwordHash] = passwordHash
+            it[UsersTable.passwordHash] = ""
         }
-        User(id = id.value.toString(), email = email, passwordHash = passwordHash)
+        User(id = id.value.toString(), email = email, passwordHash = "")
     }
 
     fun findByEmail(email: String): User? = transaction {

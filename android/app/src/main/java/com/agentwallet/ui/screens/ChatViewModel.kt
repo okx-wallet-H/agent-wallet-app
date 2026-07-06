@@ -70,9 +70,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         } catch (e: Exception) { e.message ?: "登录失败" }
     }
 
-    suspend fun sendOtp(email: String, password: String): String? {
+    suspend fun sendOtp(email: String): String? {
         return try {
-            api.register(email, password)
+            api.sendOtp(email)
             null
         } catch (e: Exception) { e.message ?: "发送验证码失败" }
     }

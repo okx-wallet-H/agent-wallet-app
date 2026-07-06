@@ -45,7 +45,7 @@ object DatabaseFactory {
             // Ensure anonymous user exists
             val anonExists = com.agentwallet.models.UserRepository.findByEmail("anonymous@local") != null
             if (!anonExists) {
-                com.agentwallet.models.UserRepository.create("anonymous@local", "nopass")
+                com.agentwallet.models.UserRepository.create("anonymous@local")
             }
         }
     }
