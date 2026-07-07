@@ -69,13 +69,11 @@ class OnchainosService(
     }
 
     private fun exec(homeDir: File, vararg args: String): OnchainosResult {
-        val cmd = listOf(cliPath) + args.toList()
-        val pb = java.lang.ProcessBuilder(cmd)
+        val homePath = homeDir.absolutePath
+        val quotedArgs = args.joinToString(" ") { "'${it.replace("'", "'\\''")}'" }
+        val cmd = "export HOME='$homePath' && $cliPath $quotedArgs"
+        val pb = java.lang.ProcessBuilder("sh", "-c", cmd)
         pb.directory(homeDir)
-        val env = pb.environment()
-        env["HOME"] = homeDir.absolutePath
-        env["PATH"] = System.getenv("PATH") ?: "/usr/local/bin:/usr/bin:/bin"
-        env["ONCHAINOS_HOME"] = homeDir.absolutePath
         pb.redirectErrorStream(true)
 
         val process = pb.start()
