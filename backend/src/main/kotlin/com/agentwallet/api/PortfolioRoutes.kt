@@ -26,7 +26,15 @@ fun Route.portfolioRoutes(config: AppConfig) {
 
         val user = UserRepository.findById(userId)
         if (user == null || !user.onchainosVerified) {
-            call.respondText(json.encodeToString(PortfolioData(0.0, emptyList())), io.ktor.http.ContentType.Application.Json)
+            call.respondText(json.encodeToString(mapOf("error" to "wallet not connected", "totalUsd" to 0.0, "tokens" to emptyList<Any>())), io.ktor.http.ContentType.Application.Json)
+            return@get
+        }
+
+        // Check session is still active
+        val status = onchainos.status(userId)
+        val loggedIn = status.isOk() && status.jsonData()?.jsonObject?.get("loggedIn")?.jsonPrimitive?.content == "true"
+        if (!loggedIn) {
+            call.respondText(json.encodeToString(mapOf("error" to "session expired, please re-verify", "totalUsd" to 0.0, "tokens" to emptyList<Any>())), io.ktor.http.ContentType.Application.Json)
             return@get
         }
 
