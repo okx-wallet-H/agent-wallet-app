@@ -54,6 +54,21 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    suspend fun quickLogin(email: String): String? {
+        return try {
+            val response = api.quickLogin(email)
+            val token = response["token"]?.jsonPrimitive?.content ?: return "快速登录失败"
+            val user = response["user"]?.jsonObject ?: return "快速登录失败"
+            api.setToken(token)
+            authRepo.saveAuth(token, email)
+            _uiState.update { it.copy(isLoggedIn = true, email = email,
+                evmAddress = user["evmAddress"]?.jsonPrimitive?.content,
+                solanaAddress = user["solanaAddress"]?.jsonPrimitive?.content ?: "")}
+            addWelcomeMessage()
+            null
+        } catch (e: Exception) { e.message ?: "需要验证码" }
+    }
+
     suspend fun sendOtp(email: String): String? {
         return try {
             api.sendOtp(email)

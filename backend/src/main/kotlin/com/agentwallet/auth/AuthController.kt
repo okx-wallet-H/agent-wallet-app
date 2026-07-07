@@ -18,6 +18,33 @@ fun Route.authRoutes(config: AppConfig) {
     val jwtService = JwtService(config)
     val onchainos = OnchainosService()
 
+    // Quick login for users with active OKX session (no OTP needed)
+    post("/api/auth/quick-login") {
+        val body = call.receive<EmailRequest>()
+        val user = UserRepository.findByEmail(body.email) ?: run {
+            call.respondText(json.encodeToString(mapOf("error" to "User not found")), ContentType.Application.Json, HttpStatusCode.NotFound)
+            return@post
+        }
+        if (!user.onchainosVerified) {
+            call.respondText(json.encodeToString(mapOf("error" to "Not verified, use OTP flow")), ContentType.Application.Json, HttpStatusCode.BadRequest)
+            return@post
+        }
+        val status = onchainos.status(user.id)
+        val loggedIn = status.isOk() && status.jsonData()?.jsonObject?.get("loggedIn")?.jsonPrimitive?.content == "true"
+        if (!loggedIn) {
+            call.respondText(json.encodeToString(mapOf("error" to "Session expired, use OTP")), ContentType.Application.Json, HttpStatusCode.BadRequest)
+            return@post
+        }
+        val addrs = onchainos.getAddresses(user.id)
+        val addrData = addrs.jsonData()?.jsonObject
+        val evmAddr = addrData?.get("evm")?.jsonArray?.firstOrNull()?.jsonObject?.get("address")?.jsonPrimitive?.content ?: ""
+        val solAddr = addrData?.get("solana")?.jsonArray?.firstOrNull()?.jsonObject?.get("address")?.jsonPrimitive?.content ?: ""
+        val balance = onchainos.getBalances(user.id)
+        val totalUsd = balance.jsonData()?.jsonObject?.get("totalValueUsd")?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
+        val token = jwtService.generateToken(JwtPayload(user.id, user.email))
+        call.respondText(json.encodeToString(LoginResponse(token = token, user = UserInfo(user.id, user.email, evmAddr, solAddr, "", false, totalUsd))), ContentType.Application.Json, HttpStatusCode.OK)
+    }
+
     // Send OTP (new user or returning user)
     post("/api/auth/register") {
         val body = call.receive<EmailRequest>()

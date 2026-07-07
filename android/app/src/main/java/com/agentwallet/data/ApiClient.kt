@@ -42,6 +42,11 @@ class ApiClient(private val baseUrl: String = "http://147.182.160.240:8080") {
 
     // ─── Auth ──────────────────────────────────────
 
+    suspend fun quickLogin(email: String): JsonObject {
+        val r: HttpResponse = httpClient.post("$baseUrl/api/auth/quick-login") { setBody(EmailOnlyRequest(email)) }
+        return Json.parseToJsonElement(r.bodyAsText()).jsonObject
+    }
+
     suspend fun sendOtp(email: String): JsonObject {
         val r: HttpResponse = httpClient.post("$baseUrl/api/auth/register") { setBody(EmailOnlyRequest(email)) }
         return Json.parseToJsonElement(r.bodyAsText()).jsonObject

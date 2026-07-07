@@ -85,6 +85,10 @@ fun LoginScreen(
                 if (email.isBlank() || !email.contains("@")) { error = "请输入有效的邮箱地址"; return@Button }
                 loading = true; error = null
                 scope.launch {
+                    // Try quick login first (no OTP needed for returning users)
+                    val quickErr = viewModel.quickLogin(email)
+                    if (quickErr == null) { loading = false; return@launch }
+                    // Fall back to OTP
                     val err = viewModel.sendOtp(email)
                     loading = false
                     if (err != null) error = err
