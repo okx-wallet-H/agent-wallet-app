@@ -40,8 +40,12 @@ object DatabaseFactory {
                 ConversationsTable,
                 TradeHistoryTable
             )
-            // Migration: add onchainos_verified column if missing
+            // Migration: add columns if missing
             exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS onchainos_verified BOOLEAN DEFAULT FALSE")
+            exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS cached_evm_address TEXT")
+            exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS cached_sol_address TEXT")
+            exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS cached_balance DOUBLE PRECISION DEFAULT 0.0")
+            exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS cached_at TIMESTAMP")
             // Ensure anonymous user exists
             val anonExists = com.agentwallet.models.UserRepository.findByEmail("anonymous@local") != null
             if (!anonExists) {

@@ -30,41 +30,47 @@ fun Route.portfolioRoutes(config: AppConfig) {
             return@get
         }
 
-        // Check session is still active
-        val status = onchainos.status(userId)
-        val loggedIn = status.isOk() && status.jsonData()?.jsonObject?.get("loggedIn")?.jsonPrimitive?.content == "true"
-        if (!loggedIn) {
-            call.respondText(json.encodeToString(mapOf("error" to "session expired, please re-verify", "totalUsd" to 0.0, "tokens" to emptyList<Any>())), io.ktor.http.ContentType.Application.Json)
-            return@get
-        }
-
-        // Get addresses
-        var evmAddr = ""; var solAddr = ""
-        try {
-            val addrs = onchainos.getAddresses(userId)
-            val ad = addrs.jsonData()?.jsonObject
-            evmAddr = ad?.get("evm")?.jsonArray?.firstOrNull()?.jsonObject?.get("address")?.jsonPrimitive?.content ?: ""
-            solAddr = ad?.get("solana")?.jsonArray?.firstOrNull()?.jsonObject?.get("address")?.jsonPrimitive?.content ?: ""
-        } catch (e: Exception) {}
-
-        // Get balances
-        var totalUsd = 0.0
+        // Use cached data first (always available)
+        var evmAddr = user.cachedEvmAddress ?: ""
+        var solAddr = user.cachedSolAddress ?: ""
+        var totalUsd = user.cachedBalance
         val tokens = mutableListOf<TokenData>()
+
+        // Try to refresh from onchainos if session is active
         try {
-            val balances = onchainos.getBalances(userId)
-            val details = balances.jsonData()?.jsonObject?.get("details")?.jsonArray ?: JsonArray(emptyList())
-            for (chain in details) {
-                val chainObj = chain.jsonObject
-                val tokenAssets = chainObj["tokenAssets"]?.jsonArray ?: continue
-                for (t in tokenAssets) {
-                    val tok = t.jsonObject
-                    val sym = tok["customSymbol"]?.jsonPrimitive?.content ?: tok["symbol"]?.jsonPrimitive?.content ?: "?"
-                    val bal = tok["balance"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
-                    val usd = tok["usdValue"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
-                    if (bal > 0.0 || usd > 0.0) { tokens.add(TokenData(sym, bal, usd)); totalUsd += usd }
+            val status = onchainos.status(userId)
+            val loggedIn = status.isOk() && status.jsonData()?.jsonObject?.get("loggedIn")?.jsonPrimitive?.content == "true"
+            if (loggedIn) {
+                val addrs = onchainos.getAddresses(userId)
+                val ad = addrs.jsonData()?.jsonObject
+                evmAddr = ad?.get("evm")?.jsonArray?.firstOrNull()?.jsonObject?.get("address")?.jsonPrimitive?.content ?: evmAddr
+                solAddr = ad?.get("solana")?.jsonArray?.firstOrNull()?.jsonObject?.get("address")?.jsonPrimitive?.content ?: solAddr
+
+                val balances = onchainos.getBalances(userId)
+                val details = balances.jsonData()?.jsonObject?.get("details")?.jsonArray ?: JsonArray(emptyList())
+                totalUsd = 0.0
+                for (chain in details) {
+                    val chainObj = chain.jsonObject
+                    val tokenAssets = chainObj["tokenAssets"]?.jsonArray ?: continue
+                    for (t in tokenAssets) {
+                        val tok = t.jsonObject
+                        val sym = tok["customSymbol"]?.jsonPrimitive?.content ?: tok["symbol"]?.jsonPrimitive?.content ?: "?"
+                        val bal = tok["balance"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
+                        val usd = tok["usdValue"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
+                        if (bal > 0.0 || usd > 0.0) { tokens.add(TokenData(sym, bal, usd)); totalUsd += usd }
+                    }
                 }
+                // Update cache
+                UserRepository.updateWalletCache(userId, evmAddr, solAddr, totalUsd)
             }
         } catch (e: Exception) {}
+
+        // If no cached data at all, add a placeholder for the known addresses
+        if (evmAddr.isBlank() && solAddr.isBlank() && tokens.isEmpty()) {
+            evmAddr = user.cachedEvmAddress ?: ""
+            solAddr = user.cachedSolAddress ?: ""
+            totalUsd = user.cachedBalance
+        }
 
         call.respondText(json.encodeToString(PortfolioData(totalUsd, tokens, evmAddr, solAddr)), io.ktor.http.ContentType.Application.Json)
     }

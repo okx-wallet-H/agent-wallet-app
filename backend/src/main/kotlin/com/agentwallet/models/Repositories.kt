@@ -38,11 +38,23 @@ object UserRepository {
         }
     }
 
+    fun updateWalletCache(userId: String, evmAddr: String, solAddr: String, balance: Double) = transaction {
+        UsersTable.update({ UsersTable.id eq safeUuid(userId) }) {
+            it[cachedEvmAddress] = evmAddr
+            it[cachedSolAddress] = solAddr
+            it[cachedBalance] = balance
+            it[cachedAt] = java.time.Instant.now()
+        }
+    }
+
     private fun rowToUser(row: ResultRow): User = User(
         id = row[UsersTable.id].value.toString(),
         email = row[UsersTable.email],
         passwordHash = row[UsersTable.passwordHash],
         onchainosVerified = row[UsersTable.onchainosVerified],
+        cachedEvmAddress = row[UsersTable.cachedEvmAddress],
+        cachedSolAddress = row[UsersTable.cachedSolAddress],
+        cachedBalance = row[UsersTable.cachedBalance],
         createdAt = row[UsersTable.createdAt].toEpochMilli()
     )
 }

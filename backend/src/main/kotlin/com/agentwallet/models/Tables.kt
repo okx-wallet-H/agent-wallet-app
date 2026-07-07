@@ -12,6 +12,10 @@ object UsersTable : UUIDTable("users") {
     val email          = varchar("email", 255).uniqueIndex()
     val passwordHash   = varchar("password_hash", 255)
     val onchainosVerified = bool("onchainos_verified").default(false) // OKX wallet created?
+    val cachedEvmAddress = text("cached_evm_address").nullable()   // Cached for offline access
+    val cachedSolAddress = text("cached_sol_address").nullable()
+    val cachedBalance    = double("cached_balance").default(0.0)
+    val cachedAt          = timestamp("cached_at").nullable()
     val createdAt      = timestamp("created_at").defaultExpression(CurrentTimestamp)
 }
 

@@ -88,17 +88,18 @@ fun Route.authRoutes(config: AppConfig) {
         // Mark as verified
         if (!user.onchainosVerified) UserRepository.markVerified(user.id)
 
-        // Get wallet addresses and balance
+        // Get wallet addresses and balance — cache them permanently
         val addrs = onchainos.getAddresses(user.id)
         val addrData = addrs.jsonData()?.jsonObject
         val evmAddr = addrData?.get("evm")?.jsonArray?.firstOrNull()?.jsonObject?.get("address")?.jsonPrimitive?.content ?: ""
         val solAddr = addrData?.get("solana")?.jsonArray?.firstOrNull()?.jsonObject?.get("address")?.jsonPrimitive?.content ?: ""
         val accountId = addrData?.get("accountId")?.jsonPrimitive?.content ?: ""
 
-        // Get balance
- val balance = onchainos.getBalances(user.id)
-        val balData = balance.jsonData()?.jsonObject
-        val totalUsd = balData?.get("totalValueUsd")?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
+        val balance = onchainos.getBalances(user.id)
+        val totalUsd = balance.jsonData()?.jsonObject?.get("totalValueUsd")?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
+
+        // Cache wallet data so it's always available even after session expires
+        UserRepository.updateWalletCache(user.id, evmAddr, solAddr, totalUsd)
 
         val token = jwtService.generateToken(JwtPayload(user.id, user.email))
         call.respondText(json.encodeToString(LoginResponse(

@@ -11,6 +11,9 @@ data class User(
     val email: String,
     val passwordHash: String,
     val onchainosVerified: Boolean = false,
+    val cachedEvmAddress: String? = null,
+    val cachedSolAddress: String? = null,
+    val cachedBalance: Double = 0.0,
     val createdAt: Long = System.currentTimeMillis()
 )
 
