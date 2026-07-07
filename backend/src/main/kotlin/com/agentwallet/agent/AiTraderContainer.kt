@@ -16,6 +16,7 @@ class AiTraderContainer(
     private val profile: TraderProfile,
     private val llmClient: LlmClient,
     private val signalService: OkxSignalService,
+    private val socialService: OkxSocialService?,
     private val knowledgeDir: String = "/opt/trader-knowledge"
 ) {
     private val logger = LoggerFactory.getLogger("Trader-${profile.id}")
@@ -71,15 +72,48 @@ class AiTraderContainer(
         }
     }
 
-    /** Fetch raw data based on trader's data source */
+    /** Fetch raw data based on trader's data source — each trader has unique skill set */
     private suspend fun fetchRawData(): List<Map<String, String>> {
         return try {
             when (profile.dataSource) {
-                "signal" -> signalService.getSignals(profile.chain, profile.walletType)
-                    .map { mapOf("token" to it.tokenSymbol, "amount" to it.amountUsd,
-                        "wallets" to it.triggerWallets.size.toString(), "soldRatio" to it.soldRatio) }
-                "trenches" -> signalService.getSignals(profile.chain).map {
-                    mapOf("token" to it.tokenSymbol, "amount" to it.amountUsd) }
+                "signal" -> {
+                    // Smart money / whale signals with security analysis
+                    val signals = signalService.getSignals(profile.chain, profile.walletType)
+                    signals.map { s ->
+                        val analysis = try { signalService.getTokenAnalysis(profile.chain, s.tokenAddress) } catch (e: Exception) { null }
+                        mapOf("token" to s.tokenSymbol, "amount" to s.amountUsd,
+                            "wallets" to s.triggerWallets.size.toString(), "soldRatio" to s.soldRatio,
+                            "marketCap" to s.marketCapUsd, "riskLevel" to (analysis?.riskControlLevel ?: "unknown"),
+                            "holders" to (analysis?.holders?.toString() ?: "?"), "bundlePct" to (analysis?.bundleHoldingRatio?.toString() ?: "?"),
+                            "lpLocked" to (analysis?.liquidityLocked?.toString() ?: "?"))
+                    }
+                }
+                "trenches" -> {
+                    // New token scanning with dev reputation
+                    val signals = signalService.getSignals(profile.chain)
+                    signals.take(10).map { s ->
+                        val dev = try { signalService.getDevProfile(profile.chain, s.triggerWallets.firstOrNull() ?: "") } catch (e: Exception) { null }
+                        val analysis = try { signalService.getTokenAnalysis(profile.chain, s.tokenAddress) } catch (e: Exception) { null }
+                        mapOf("token" to s.tokenSymbol, "amount" to s.amountUsd,
+                            "marketCap" to s.marketCapUsd, "devLaunches" to (dev?.totalLaunches?.toString() ?: "?"),
+                            "devRugCount" to (dev?.rugCount?.toString() ?: "?"), "devRugHistory" to (dev?.rugHistory?.toString() ?: "?"),
+                            "riskLevel" to (analysis?.riskControlLevel ?: "unknown"),
+                            "bundlePct" to (analysis?.bundleHoldingRatio?.toString() ?: "?"),
+                            "lpLocked" to (analysis?.liquidityLocked?.toString() ?: "?"))
+                    }
+                }
+                "social" -> {
+                    // KOL first mention + sentiment tracking
+                    val signals = signalService.getSignals(profile.chain)
+                    signals.take(5).mapNotNull { s ->
+                        val sentiment = try { socialService?.getSentiment(s.tokenAddress, profile.chain) } catch (e: Exception) { null } ?: return@mapNotNull null
+                        mapOf("token" to s.tokenSymbol, "amount" to s.amountUsd,
+                            "mentions24h" to sentiment.mentionCount24h.toString(),
+                            "bullishRatio" to "%.0f".format(sentiment.bullishRatio * 100),
+                            "firstMentionedBy" to (sentiment.firstMentionedBy ?: "unknown"),
+                            "topKols" to sentiment.topKols.joinToString(","))
+                    }
+                }
                 else -> signalService.getSignals(profile.chain).map {
                     mapOf("token" to it.tokenSymbol, "amount" to it.amountUsd) }
             }

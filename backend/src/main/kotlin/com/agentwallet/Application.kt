@@ -12,7 +12,22 @@ import io.ktor.server.netty.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.*
 
-fun main() {
+fun main(args: Array<String>) {
+    val traderId = System.getenv("TRADER_ID")
+    if (traderId != null) {
+        // Run as standalone AI trader container
+        val llmClient = AnthropicLlmClient(HttpClient(), System.getenv("ANTHROPIC_API_KEY") ?: "")
+        val signalSvc = OkxSignalService(System.getenv("OKX_API_KEY") ?: "", System.getenv("OKX_SECRET_KEY") ?: "", System.getenv("OKX_PASSPHRASE") ?: "", "https://web3.okx.com")
+        val engine = AiTraderEngine(llmClient, signalSvc, signalSvc)
+        val profile = engine.traders.find { it.id == traderId } ?: run { System.err.println("Unknown trader: $traderId"); return }
+        val auth = OkxAuth(System.getenv("OKX_API_KEY") ?: "", System.getenv("OKX_SECRET_KEY") ?: "", System.getenv("OKX_PASSPHRASE") ?: "")
+        val socialSvc = OkxSocialService(HttpClient(), auth, "https://web3.okx.com")
+        val container = AiTraderContainer(profile, llmClient, signalSvc, socialSvc)
+        println("=== AI Trader: ${profile.emoji} ${profile.name} ===")
+        runBlocking { container.run(this) }
+        return
+    }
+
     val config = AppConfig.fromEnv()
     DotEnv.load()
     DatabaseFactory.init(config)

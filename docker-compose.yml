@@ -57,7 +57,8 @@ services:
     build: { context: ./backend, dockerfile: Dockerfile.prod }
     container_name: trader-solana-sniper
     env_file: .env
-    command: ["java", "-cp", "app.jar", "com.agentwallet.TraderMainKt", "solana-sniper"]
+    environment:
+      - TRADER_ID=solana-sniper
     volumes: ["./trader-knowledge:/opt/trader-knowledge"]
     restart: unless-stopped
 
@@ -65,7 +66,8 @@ services:
     build: { context: ./backend, dockerfile: Dockerfile.prod }
     container_name: trader-smart-money
     env_file: .env
-    command: ["java", "-cp", "app.jar", "com.agentwallet.TraderMainKt", "smart-money"]
+    environment:
+      - TRADER_ID=smart-money
     volumes: ["./trader-knowledge:/opt/trader-knowledge"]
     restart: unless-stopped
 
@@ -73,7 +75,8 @@ services:
     build: { context: ./backend, dockerfile: Dockerfile.prod }
     container_name: trader-kol-radar
     env_file: .env
-    command: ["java", "-cp", "app.jar", "com.agentwallet.TraderMainKt", "kol-radar"]
+    environment:
+      - TRADER_ID=kol-radar
     volumes: ["./trader-knowledge:/opt/trader-knowledge"]
     restart: unless-stopped
 
@@ -81,7 +84,8 @@ services:
     build: { context: ./backend, dockerfile: Dockerfile.prod }
     container_name: trader-whale-watcher
     env_file: .env
-    command: ["java", "-cp", "app.jar", "com.agentwallet.TraderMainKt", "whale-watcher"]
+    environment:
+      - TRADER_ID=whale-watcher
     volumes: ["./trader-knowledge:/opt/trader-knowledge"]
     restart: unless-stopped
 
