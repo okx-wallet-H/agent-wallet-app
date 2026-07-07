@@ -91,11 +91,8 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
                     Text("${it.take(6)}...${it.takeLast(4)}", style = AgentWalletTypography.labelMedium, color = TextSecondary)
                 }
             }
-            Text(
-                text = if (uiState.connected) "已连接" else "重连中...",
-                style = AgentWalletTypography.labelMedium,
-                color = TextSecondary
-            )
+            Text("⇤", style = AgentWalletTypography.titleMedium, color = TextSecondary,
+                modifier = Modifier.clip(CircleShape).clickable { viewModel.logout() }.padding(8.dp))
         }
 
         // Divider
