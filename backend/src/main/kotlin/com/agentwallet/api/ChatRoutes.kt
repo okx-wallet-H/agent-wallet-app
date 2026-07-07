@@ -37,7 +37,8 @@ fun Route.chatRoutes(config: AppConfig) {
     val analysisAgent = AnalysisAgent(okxSignal)
     val executionAgent = ExecutionAgent(okxDex, coinbaseWallet)
 
-    val orchestrator = OrchestratorAgent(llmClient, chatAgent, analysisAgent, executionAgent)
+    val onchainos = com.agentwallet.services.OnchainosService()
+    val orchestrator = OrchestratorAgent(llmClient, chatAgent, analysisAgent, executionAgent, onchainos)
 
     post("/api/chat") {
         val req = call.receive<ChatRequest>()

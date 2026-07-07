@@ -16,20 +16,29 @@ class OrchestratorAgent(
     private val llmClient: LlmClient,
     private val chatAgent: ChatAgent,
     private val analysisAgent: AnalysisAgent,
-    private val executionAgent: ExecutionAgent
+    private val executionAgent: ExecutionAgent,
+    private val onchainos: com.agentwallet.services.OnchainosService
 ) {
     private val riskEngine = RiskEngine()
 
-    /**
-     * Process a user message through the LLM pipeline.
-     */
     suspend fun process(userId: String, message: String, conversationId: String): List<ChatMessage> {
-        // Build context
         val strategies = StrategyRepository.findByUserId(userId)
         val dailyUsage = RiskUsageTracker.get(userId)
 
+        // Get wallet addresses
+        var evmAddr = ""
+        var solAddr = ""
+        try {
+            val addrs = onchainos.getAddresses(userId)
+            val data = addrs.jsonData()?.jsonObject
+            evmAddr = data?.get("evm")?.jsonArray?.firstOrNull()?.jsonObject?.get("address")?.jsonPrimitive?.content ?: ""
+            solAddr = data?.get("solana")?.jsonArray?.firstOrNull()?.jsonObject?.get("address")?.jsonPrimitive?.content ?: ""
+        } catch (e: Exception) { /* ignore */ }
+
         val context = UserContext(
             userId = userId,
+            evmAddress = evmAddr,
+            solanaAddress = solAddr,
             activeStrategies = strategies.filter { it.status == StrategyStatus.RUNNING }.map {
                 ActiveStrategySummary(it.name, it.chain, it.status.name, "$%.2f".format(it.pnl))
             },

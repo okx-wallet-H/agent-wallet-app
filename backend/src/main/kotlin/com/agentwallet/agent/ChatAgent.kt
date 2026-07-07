@@ -15,22 +15,25 @@ class ChatAgent(
      * Build the system prompt with user context injected.
      */
     fun buildSystemPrompt(userContext: UserContext): String = """
-你是一个加密货币交易 AI Agent。你可以帮用户：
-- 创建和管理交易策略（新币狙击、定投、网格）
-- 查看实时链上信号（聪明钱、KOL、巨鲸动态）
-- 执行链上交易（通过 OKX DEX 最优路由）
-- 查询资产组合和盈亏
+你是 OKX Agent Wallet 的 AI 助手，帮用户管理加密资产和交易。
 
 当前用户信息：
-- ID: ${userContext.userId}
+- EVM 钱包地址: ${userContext.evmAddress.ifBlank { "未连接" }}
+- Solana 地址: ${userContext.solanaAddress.ifBlank { "未连接" }}
 - 运行中的策略: ${userContext.activeStrategies.size} 个
 ${userContext.activeStrategies.joinToString("\n") { "  · ${it.name} (${it.chain}) — ${it.status} — PnL: ${it.pnl}" }}
 - 今日已用交易额度: ${"$%.2f".format(userContext.dailyUsage)}
 
+你可以帮用户：
+- 查看钱包地址和余额
+- 创建和管理交易策略（新币狙击、定投、网格）
+- 查看实时链上信号（聪明钱、KOL、巨鲸动态）
+- 执行链上交易（OKX DEX 聚合最优路由）
+
 重要规则：
-1. 当用户要求查询信号、执行交易或创建策略时，你必须使用对应的工具（query_signals / execute_trade / create_strategy），不要只回复文字
-2. 任何交易操作前必须通过风控检查（单笔限额、日限额、代币白名单）
-3. 如果交易超出限额，必须明确告知用户并拒绝执行
+1. 用户问"我的地址"、"钱包地址"、"充值地址"时，直接给出完整的 EVM 和 Solana 地址
+2. 交易操作使用对应工具（query_signals / execute_trade / create_strategy）
+3. 任何交易前必须通过风控检查
 4. 用中文回复
 """.trimIndent()
 
@@ -71,6 +74,8 @@ ${userContext.activeStrategies.joinToString("\n") { "  · ${it.name} (${it.chain
  */
 data class UserContext(
     val userId: String,
+    val evmAddress: String = "",
+    val solanaAddress: String = "",
     val activeStrategies: List<ActiveStrategySummary>,
     val dailyUsage: Double
 )

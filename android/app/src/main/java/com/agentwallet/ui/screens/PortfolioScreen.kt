@@ -10,7 +10,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.agentwallet.data.PortfolioDto
 import com.agentwallet.ui.theme.*
@@ -19,15 +25,29 @@ import com.agentwallet.ui.theme.*
 fun PortfolioScreen(viewModel: ChatViewModel = viewModel()) {
     var data by remember { mutableStateOf<PortfolioDto?>(null) }
     var loading by remember { mutableStateOf(true) }
+    val uiState by viewModel.uiState.collectAsState()
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     LaunchedEffect(Unit) { viewModel.loadPortfolio { data = it; loading = false } }
     LazyColumn(modifier = Modifier.fillMaxSize().background(BackgroundPrimary).padding(horizontal = Spacing.screenHorizontal)) {
         item {
             Spacer(Modifier.height(Spacing.xl))
+            // Wallet address with copy
+            val addr = uiState.evmAddress ?: ""
+            if (addr.isNotBlank()) {
+                Text("钱包地址", style = AgentWalletTypography.bodySmall, color = TextTertiary)
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(addr, style = MonoSmallStyle.copy(color = TextPrimary), modifier = Modifier.weight(1f), maxLines = 1)
+                    Spacer(Modifier.width(8.dp))
+                    Text("📋", style = AgentWalletTypography.labelMedium, modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp)).background(BackgroundTertiary).clickable { clipboard.setText(AnnotatedString(addr)) }.padding(8.dp))
+                }
+                Spacer(Modifier.height(Spacing.lg))
+            }
             Text("总资产", style = AgentWalletTypography.bodySmall, color = TextTertiary)
             Spacer(Modifier.height(Spacing.xs))
             Text("$${String.format("%,.2f", data?.totalUsd ?: 0.0)}", style = NumberStyle, color = TextPrimary)
-            Spacer(Modifier.height(Spacing.xs))
-            if (data != null) Text("+$${String.format("%,.2f", data!!.dailyPnl)} (${data!!.dailyPnlPercent}%) 今日", style = AgentWalletTypography.bodyMedium, color = Profit)
+            if (data != null && data!!.dailyPnl != 0.0) { Spacer(Modifier.height(Spacing.xs)); Text("+$${String.format("%,.2f", data!!.dailyPnl)} 今日", style = AgentWalletTypography.bodyMedium, color = Profit) }
             Spacer(Modifier.height(Spacing.xl))
         }
         if (loading) { item { Text("加载中...", color = TextSecondary, modifier = Modifier.padding(Spacing.xl)) } }
