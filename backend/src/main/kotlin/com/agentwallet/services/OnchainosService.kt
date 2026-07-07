@@ -72,8 +72,10 @@ class OnchainosService(
         val cmd = listOf(cliPath) + args.toList()
         val pb = java.lang.ProcessBuilder(cmd)
         pb.directory(homeDir)
-        pb.environment()["HOME"] = homeDir.absolutePath
-        pb.environment()["PATH"] = System.getenv("PATH") ?: "/usr/local/bin:/usr/bin:/bin"
+        val env = pb.environment()
+        env["HOME"] = homeDir.absolutePath
+        env["PATH"] = System.getenv("PATH") ?: "/usr/local/bin:/usr/bin:/bin"
+        env["ONCHAINOS_HOME"] = homeDir.absolutePath
         pb.redirectErrorStream(true)
 
         val process = pb.start()
