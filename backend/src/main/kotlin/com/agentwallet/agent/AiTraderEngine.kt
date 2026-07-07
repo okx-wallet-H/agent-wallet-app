@@ -20,6 +20,7 @@ class AiTraderEngine(
     private val logger = LoggerFactory.getLogger(AiTraderEngine::class.java)
     private val json = Json { ignoreUnknownKeys = true }
     private val publishedSignals = ConcurrentHashMap<String, MutableList<TraderSignal>>()
+    private val followerCounts = ConcurrentHashMap<String, Int>()
 
     val traders = listOf(
         TraderProfile(
@@ -149,6 +150,10 @@ ${json.encodeToString(signals.take(5))}
         else publishedSignals.values.flatten().sortedByDescending { it.timestamp }.take(20)
     }
 
+    fun incrementFollowers(traderId: String) {
+        followerCounts.merge(traderId, 1, Int::plus)
+    }
+
     fun getTraderStats(traderId: String): TraderStats {
         val signals = publishedSignals[traderId] ?: return TraderStats(0, 0.0, 0.0, 0)
         val won = signals.count { it.outcome == "win" }
@@ -157,7 +162,7 @@ ${json.encodeToString(signals.take(5))}
             totalSignals = signals.size,
             winRate = if (total > 0) won.toDouble() / total else 0.0,
             totalPnl = signals.sumOf { it.pnl ?: 0.0 },
-            followers = 0
+            followers = followerCounts.getOrDefault(traderId, 0)
         )
     }
 }

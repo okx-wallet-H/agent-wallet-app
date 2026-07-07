@@ -50,6 +50,7 @@ fun main() {
             portfolioRoutes(config)
             signalRoutes(config)
             traderRoutes(traderEngine)
+            copyTradeRoutes(traderEngine)
         }
     }.start(wait = true)
 }
