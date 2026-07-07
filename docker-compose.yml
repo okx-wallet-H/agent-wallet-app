@@ -52,6 +52,39 @@ services:
       redis:
         condition: service_healthy
 
+  # === AI Trader Containers (independent per strategy) ===
+  trader-solana-sniper:
+    build: { context: ./backend, dockerfile: Dockerfile.prod }
+    container_name: trader-solana-sniper
+    env_file: .env
+    command: ["java", "-cp", "app.jar", "com.agentwallet.TraderMainKt", "solana-sniper"]
+    volumes: ["./trader-knowledge:/opt/trader-knowledge"]
+    restart: unless-stopped
+
+  trader-smart-money:
+    build: { context: ./backend, dockerfile: Dockerfile.prod }
+    container_name: trader-smart-money
+    env_file: .env
+    command: ["java", "-cp", "app.jar", "com.agentwallet.TraderMainKt", "smart-money"]
+    volumes: ["./trader-knowledge:/opt/trader-knowledge"]
+    restart: unless-stopped
+
+  trader-kol-radar:
+    build: { context: ./backend, dockerfile: Dockerfile.prod }
+    container_name: trader-kol-radar
+    env_file: .env
+    command: ["java", "-cp", "app.jar", "com.agentwallet.TraderMainKt", "kol-radar"]
+    volumes: ["./trader-knowledge:/opt/trader-knowledge"]
+    restart: unless-stopped
+
+  trader-whale-watcher:
+    build: { context: ./backend, dockerfile: Dockerfile.prod }
+    container_name: trader-whale-watcher
+    env_file: .env
+    command: ["java", "-cp", "app.jar", "com.agentwallet.TraderMainKt", "whale-watcher"]
+    volumes: ["./trader-knowledge:/opt/trader-knowledge"]
+    restart: unless-stopped
+
 volumes:
   pgdata:
   redisdata:

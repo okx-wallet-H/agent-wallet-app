@@ -172,6 +172,9 @@ data class TraderProfile(
     val id: String, val name: String, val emoji: String,
     val description: String, val chain: String,
     val dataSource: String,  // "trenches" | "signal" | "social" | "token"
+    val walletType: String = "1",  // 1=smart money, 2=KOL, 3=whale
+    val model: String = "claude-sonnet-4-6",
+    val scanIntervalMs: Long = 60_000,
     val claudeFilter: String,
     val stats: TraderStats
 )
