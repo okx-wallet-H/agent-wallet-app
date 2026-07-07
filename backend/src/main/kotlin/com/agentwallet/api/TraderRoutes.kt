@@ -41,8 +41,7 @@ fun Route.traderRoutes(engine: AiTraderEngine) {
     get("/api/signals") {
         val traderId = call.request.queryParameters["trader"]
         val signals = engine.getSignals(traderId)
-        call.respondText(json.encodeToString(signals.map {
-            mapOf("traderId" to it.traderId, "traderName" to it.traderName, "traderEmoji" to it.traderEmoji, "token" to it.token, "confidence" to it.confidence, "reason" to it.reason, "action" to it.action, "timestamp" to it.timestamp)
-        }), ContentType.Application.Json)
+        val list = signals.map { mapOf("traderId" to it.traderId, "traderName" to it.traderName, "traderEmoji" to it.traderEmoji, "token" to it.token, "confidence" to it.confidence, "reason" to it.reason, "action" to it.action, "timestamp" to it.timestamp) }
+        call.respondText(json.encodeToString(mapOf("signals" to list)), ContentType.Application.Json)
     }
 }

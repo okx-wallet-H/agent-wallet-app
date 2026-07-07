@@ -92,6 +92,11 @@ class ApiClient(val baseUrl: String = "http://147.182.160.240:8080") {
 
     // ─── Signals ───────────────────────────────────
 
+    suspend fun getSignals2(): JsonObject {
+        val r: HttpResponse = httpClient.get("$baseUrl/api/signals")
+        return Json.parseToJsonElement(r.bodyAsText()).jsonObject
+    }
+
     suspend fun getSignals(): List<SignalDto> {
         return httpClient.get("$baseUrl/api/signals").body()
     }
