@@ -3,6 +3,8 @@ package com.agentwallet.services
 import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Wraps the onchainos CLI for multi-user OKX Agentic Wallet management.
@@ -19,6 +21,8 @@ class OnchainosService(
 ) {
     private val logger = LoggerFactory.getLogger(OnchainosService::class.java)
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+    // Per-user lock to serialize onchainos CLI calls — prevents race conditions
+    private val userLocks = ConcurrentHashMap<String, ReentrantLock>()
 
     // ─── Auth Flow ──────────────────────────────────────
 
@@ -69,18 +73,24 @@ class OnchainosService(
     }
 
     private fun exec(homeDir: File, vararg args: String): OnchainosResult {
-        val homePath = homeDir.absolutePath
-        val quotedArgs = args.joinToString(" ") { "'${it.replace("'", "'\\''")}'" }
-        val cmd = "export HOME='$homePath' && $cliPath $quotedArgs"
-        val pb = java.lang.ProcessBuilder("sh", "-c", cmd)
-        pb.directory(homeDir)
-        pb.redirectErrorStream(true)
+        val lock = userLocks.computeIfAbsent(homeDir.name) { ReentrantLock() }
+        lock.lock()
+        try {
+            val homePath = homeDir.absolutePath
+            val quotedArgs = args.joinToString(" ") { "'${it.replace("'", "'\\''")}'" }
+            val cmd = "export HOME='$homePath' && $cliPath $quotedArgs"
+            val pb = java.lang.ProcessBuilder("sh", "-c", cmd)
+            pb.directory(homeDir)
+            pb.redirectErrorStream(true)
 
-        val process = pb.start()
-        val output = process.inputStream.bufferedReader().readText()
-        val exitCode = process.waitFor()
+            val process = pb.start()
+            val output = process.inputStream.bufferedReader().readText()
+            val exitCode = process.waitFor()
 
-        return OnchainosResult(exitCode, output)
+            return OnchainosResult(exitCode, output)
+        } finally {
+            lock.unlock()
+        }
     }
 }
 
