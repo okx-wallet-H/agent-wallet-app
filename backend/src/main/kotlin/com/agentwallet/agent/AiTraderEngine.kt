@@ -24,43 +24,35 @@ class AiTraderEngine(
 
     val traders = listOf(
         TraderProfile(
-            id = "solana-sniper",
-            name = "Solana 新币狙击手",
-            emoji = "🔫",
-            description = "7×24 扫描 Solana 新币，过滤 Rug 盘，狙击优质早期项目",
-            chain = "501",
+            id = "solana-sniper", name = "Solana 新币狙击手", emoji = "🔫",
+            description = "7×24 扫描 Solana 新币，过滤 Rug 盘", chain = "501",
             dataSource = "trenches",
-            claudeFilter = "过滤条件: Dev无Rug历史, 捆绑<30%, LP已锁定, 流动性>$5000",
+            capabilities = listOf("trenches:scan", "trenches:dev", "token:security", "token:bundle", "token:liquidity"),
+            claudeFilter = "评分维度: Dev信誉(40%) + LP锁定(25%) + 捆绑检测(20%) + 流动性(15%)",
             stats = TraderStats(0, 0.0, 0.0, 0)
         ),
         TraderProfile(
-            id = "smart-money",
-            name = "聪明钱追踪",
-            emoji = "🧠",
-            description = "跟踪链上高胜率聪明钱地址，实时跟单优质交易",
-            chain = "501",
+            id = "smart-money", name = "聪明钱追踪", emoji = "🧠",
+            description = "跟踪链上高胜率聪明钱地址", chain = "501",
             dataSource = "signal",
-            claudeFilter = "过滤条件: 信号源胜率>60%, 单笔金额>$5000, 已卖出比例<20%",
+            capabilities = listOf("signal:smart", "token:security", "market:trend"),
+            claudeFilter = "评分维度: 信号源胜率(35%) + 金额规模(25%) + 安全检测(25%) + 趋势(15%)",
             stats = TraderStats(0, 0.0, 0.0, 0)
         ),
         TraderProfile(
-            id = "kol-radar",
-            name = "KOL 雷达",
-            emoji = "📡",
-            description = "监控 KOL 首次提及的代币，抢占信息差先机",
-            chain = "1",
+            id = "kol-radar", name = "KOL 雷达", emoji = "📡",
+            description = "监控 KOL 首次提及的代币", chain = "1",
             dataSource = "social",
-            claudeFilter = "过滤条件: 首次提及<30分钟, 至少2个KOL同时讨论, 代币市值<$10M",
+            capabilities = listOf("social:kol", "social:sentiment", "token:security"),
+            claudeFilter = "评分维度: 首次提及时间(30%) + KOL数量(25%) + 情绪(25%) + 安全(20%)",
             stats = TraderStats(0, 0.0, 0.0, 0)
         ),
         TraderProfile(
-            id = "whale-watcher",
-            name = "巨鲸动向",
-            emoji = "🐋",
-            description = "追踪巨鲸大额转账和买入，发现主力资金动向",
-            chain = "1",
-            dataSource = "signal",
-            claudeFilter = "过滤条件: 巨鲸类型, 金额>$50000, 代币市值<$100M",
+            id = "whale-watcher", name = "巨鲸动向", emoji = "🐋",
+            description = "追踪巨鲸大额转账和买入", chain = "1",
+            dataSource = "signal", walletType = "3",
+            capabilities = listOf("signal:whale", "token:security", "market:trend"),
+            claudeFilter = "评分维度: 金额规模(40%) + 历史胜率(30%) + 安全检测(20%) + 趋势(10%)",
             stats = TraderStats(0, 0.0, 0.0, 0)
         )
     )
@@ -171,10 +163,11 @@ ${json.encodeToString(signals.take(5))}
 data class TraderProfile(
     val id: String, val name: String, val emoji: String,
     val description: String, val chain: String,
-    val dataSource: String,  // "trenches" | "signal" | "social" | "token"
-    val walletType: String = "1",  // 1=smart money, 2=KOL, 3=whale
+    val dataSource: String,
+    val walletType: String = "1",
     val model: String = "claude-sonnet-4-6",
     val scanIntervalMs: Long = 60_000,
+    val capabilities: List<String> = emptyList(),  // capability IDs this trader uses
     val claudeFilter: String,
     val stats: TraderStats
 )

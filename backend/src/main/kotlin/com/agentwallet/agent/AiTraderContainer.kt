@@ -25,7 +25,7 @@ class AiTraderContainer(
     // Per-trader knowledge base (file-based for MVP, migrate to vector DB)
     private val kbFile = File("$knowledgeDir/${profile.id}.jsonl")
     private val tradeHistory = mutableListOf<TraderTradeRecord>()
-    private val publishedSignals = mutableListOf<TraderSignal>()
+    private val publishedSignals = mutableListOf<RatedSignal>()
     private val signalQuality = ConcurrentHashMap<String, SignalQuality>()
 
     /**
@@ -54,7 +54,7 @@ class AiTraderContainer(
                 // 3. Publish quality signals
                 signals.forEach { signal ->
                     publishedSignals.add(signal)
-                    logger.info("📡 SIGNAL: ${signal.token} | ${signal.confidence} | ${signal.reason}")
+                    logger.info("📡 ${"⭐".repeat(signal.stars)} ${signal.token} | ${signal.aiOpinion}")
                     // In production: publish to Redis/pubsub for the main API
                 }
 
@@ -123,31 +123,50 @@ class AiTraderContainer(
         }
     }
 
-    /** Claude analysis with full historical context */
-    private suspend fun analyzeWithClaude(data: List<Map<String, String>>): List<TraderSignal> {
+    /** Claude analysis producing star-rated signals with dimension scores */
+    private suspend fun analyzeWithClaude(data: List<Map<String, String>>): List<RatedSignal> {
         if (data.isEmpty()) return emptyList()
 
-        // Build context from knowledge base
-        val context = buildClaudeContext(data)
         val prompt = """
-${profile.claudeFilter}
+你是「${profile.name}」（${profile.description}）。
+评分维度权重: ${profile.claudeFilter}
+使用的能力: ${profile.capabilities.joinToString(", ")}
 
 ## 历史战绩
-近期信号: ${tradeHistory.size} 条 | 胜率: ${"%.0f".format(currentWinRate() * 100)}%
-已过滤的噪音代币: ${signalQuality.filter { it.value.isNoise }.size} 个
+总信号: ${tradeHistory.size} | 胜率: ${"%.0f".format(currentWinRate() * 100)}%
 
 ## 当前数据
-${json.encodeToString(data.take(5))}
+${json.encodeToString(data.take(10))}
 
-分析并返回 JSON 数组: [{"token":"...","confidence":"high|medium|low","reason":"...","action":"buy|skip"}]
+请分析并返回 JSON 数组。每个信号必须包含:
+- token: 代币符号
+- stars: 1-5 星评分
+- confidence: high/medium/low
+- dimensions: 评分维度数组 [{capabilityId, label, score(0-100), detail}]
+- aiOpinion: 一句话 AI 分析观点
+- action: buy/watch/skip
+
+返回格式: [{"token":"...","stars":4,"confidence":"high","dimensions":[{"capabilityId":"trenches:dev","label":"开发者信誉","score":85,"detail":"该Dev创建过5个项目，0 Rug"}],"aiOpinion":"...","action":"buy"}]
 """.trimIndent()
 
         return try {
             val response = llmClient.chat(listOf(LlmMessage("user", prompt)), model = profile.model)
-            parseClaudeResponse(response.content ?: "")
+            parseRatedResponse(response.content ?: "")
         } catch (e: Exception) {
             logger.warn("Claude analysis failed: ${e.message}")
             emptyList()
+        }
+    }
+
+    private fun parseRatedResponse(text: String): List<RatedSignal> {
+        val start = text.indexOf('['); val end = text.lastIndexOf(']') + 1
+        if (start < 0 || end <= start) return emptyList()
+        return json.parseToJsonElement(text.substring(start, end)).jsonArray.map { item ->
+            val o = item.jsonObject
+            val dims = o["dimensions"]?.jsonArray?.map { d -> val dobj=d.jsonObject
+                SignalDimension(dobj["capabilityId"]!!.jsonPrimitive.content, dobj["label"]!!.jsonPrimitive.content, dobj["score"]!!.jsonPrimitive.content.toInt(), dobj["detail"]!!.jsonPrimitive.content)
+            } ?: emptyList()
+            RatedSignal(traderId=profile.id, traderName=profile.name, traderEmoji=profile.emoji, token=o["token"]?.jsonPrimitive?.content ?: "?", chain=profile.chain, stars=o["stars"]?.jsonPrimitive?.content?.toIntOrNull() ?: computeStars(dims), confidence=o["confidence"]?.jsonPrimitive?.content ?: "medium", dimensions=dims, aiOpinion=o["aiOpinion"]?.jsonPrimitive?.content ?: "", suggestedAction=o["action"]?.jsonPrimitive?.content ?: "watch")
         }
     }
 
@@ -162,21 +181,6 @@ ${json.encodeToString(data.take(5))}
             sb.appendLine("- ${t.token}: ${t.outcome} (${t.reason})")
         }
         return sb.toString()
-    }
-
-    private fun parseClaudeResponse(text: String): List<TraderSignal> {
-        val start = text.indexOf('[')
-        val end = text.lastIndexOf(']') + 1
-        if (start < 0 || end <= start) return emptyList()
-        return json.parseToJsonElement(text.substring(start, end)).jsonArray.map { item ->
-            val obj = item.jsonObject
-            TraderSignal(profile.id, profile.name, profile.emoji,
-                obj["token"]?.jsonPrimitive?.content ?: "?",
-                obj["confidence"]?.jsonPrimitive?.content ?: "medium",
-                obj["reason"]?.jsonPrimitive?.content ?: "",
-                obj["action"]?.jsonPrimitive?.content ?: "skip",
-                System.currentTimeMillis())
-        }
     }
 
     /** Learn from trade outcomes — update quality scores */
