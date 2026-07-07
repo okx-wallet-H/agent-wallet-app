@@ -10,10 +10,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.*
 
 private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -21,6 +18,7 @@ fun Route.authRoutes(config: AppConfig) {
     val jwtService = JwtService(config)
     val onchainos = OnchainosService()
 
+    // Send OTP (new user or returning user)
     post("/api/auth/register") {
         val body = call.receive<EmailRequest>()
         val email = body.email
@@ -36,37 +34,55 @@ fun Route.authRoutes(config: AppConfig) {
             call.respondText(json.encodeToString(mapOf("error" to "Failed to send code", "detail" to result.output.take(200))), ContentType.Application.Json, HttpStatusCode.BadGateway)
             return@post
         }
-        call.respondText(json.encodeToString(mapOf("status" to "otp_sent", "userId" to user.id, "message" to "验证码已发送到 $email")), ContentType.Application.Json, HttpStatusCode.OK)
+        call.respondText(json.encodeToString(RegisterResponse("otp_sent", user.id, "验证码已发送到 $email", !user.onchainosVerified)), ContentType.Application.Json, HttpStatusCode.OK)
     }
 
+    // Verify OTP → complete login, return wallet info
     post("/api/auth/verify-otp") {
         val req = call.receive<OtpRequest>()
         val user = UserRepository.findByEmail(req.email) ?: run {
             call.respondText(json.encodeToString(mapOf("error" to "User not found")), ContentType.Application.Json, HttpStatusCode.NotFound)
             return@post
         }
-        val result = onchainos.verifyOtp(user.id, req.otp)
-        if (!result.isOk()) {
-            call.respondText(json.encodeToString(mapOf("error" to "验证码错误或已过期")), ContentType.Application.Json, HttpStatusCode.BadRequest)
-            return@post
-        }
-        UserRepository.markVerified(user.id)
 
-        // Parse addresses from onchainos output
+        // Check if user already has an active OKX session
+        val status = onchainos.status(user.id)
+        val alreadyLoggedIn = status.isOk() && status.jsonData()?.jsonObject?.get("loggedIn")?.jsonPrimitive?.content == "true"
+
+        if (!alreadyLoggedIn) {
+            // Need to complete OTP verification
+            val result = onchainos.verifyOtp(user.id, req.otp)
+            if (!result.isOk()) {
+                call.respondText(json.encodeToString(mapOf("error" to "验证码错误或已过期")), ContentType.Application.Json, HttpStatusCode.BadRequest)
+                return@post
+            }
+        }
+
+        // Mark as verified
+        if (!user.onchainosVerified) UserRepository.markVerified(user.id)
+
+        // Get wallet addresses and balance
         val addrs = onchainos.getAddresses(user.id)
-        val data = addrs.jsonData()?.jsonObject
-        val evmAddr = data?.get("evm")?.jsonArray?.firstOrNull()?.jsonObject?.get("address")?.jsonPrimitive?.content ?: ""
-        val solAddr = data?.get("solana")?.jsonArray?.firstOrNull()?.jsonObject?.get("address")?.jsonPrimitive?.content ?: ""
-        val accountId = data?.get("accountId")?.jsonPrimitive?.content ?: ""
+        val addrData = addrs.jsonData()?.jsonObject
+        val evmAddr = addrData?.get("evm")?.jsonArray?.firstOrNull()?.jsonObject?.get("address")?.jsonPrimitive?.content ?: ""
+        val solAddr = addrData?.get("solana")?.jsonArray?.firstOrNull()?.jsonObject?.get("address")?.jsonPrimitive?.content ?: ""
+        val accountId = addrData?.get("accountId")?.jsonPrimitive?.content ?: ""
+
+        // Get balance
+ val balance = onchainos.getBalances(user.id)
+        val balData = balance.jsonData()?.jsonObject
+        val totalUsd = balData?.get("totalValueUsd")?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
 
         val token = jwtService.generateToken(JwtPayload(user.id, user.email))
         call.respondText(json.encodeToString(LoginResponse(
-            token = token, user = UserInfo(user.id, user.email, evmAddress = evmAddr, solanaAddress = solAddr, accountId = accountId, isNew = !user.onchainosVerified)
+            token = token,
+            user = UserInfo(user.id, user.email, evmAddr, solAddr, accountId, !user.onchainosVerified, totalUsd)
         )), ContentType.Application.Json, HttpStatusCode.OK)
     }
 }
 
+@Serializable data class RegisterResponse(val status: String, val userId: String, val message: String, val isNew: Boolean)
 @Serializable data class EmailRequest(val email: String)
 @Serializable data class OtpRequest(val email: String, val otp: String)
 @Serializable data class LoginResponse(val token: String, val user: UserInfo)
-@Serializable data class UserInfo(val id: String, val email: String, val evmAddress: String, val solanaAddress: String, val accountId: String, val isNew: Boolean = false)
+@Serializable data class UserInfo(val id: String, val email: String, val evmAddress: String, val solanaAddress: String, val accountId: String, val isNew: Boolean = false, val totalUsd: Double = 0.0)

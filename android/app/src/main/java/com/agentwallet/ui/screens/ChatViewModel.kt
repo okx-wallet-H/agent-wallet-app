@@ -71,7 +71,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.update { it.copy(
                 isLoggedIn = true, email = email,
                 evmAddress = user["evmAddress"]?.jsonPrimitive?.content,
-                solanaAddress = user["solanaAddress"]?.jsonPrimitive?.content
+                solanaAddress = user["solanaAddress"]?.jsonPrimitive?.content ?: ""
             )}
             addWelcomeMessage()
             null
