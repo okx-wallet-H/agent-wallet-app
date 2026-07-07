@@ -42,7 +42,15 @@ fun Route.chatRoutes(config: AppConfig) {
 
     post("/api/chat") {
         val req = call.receive<ChatRequest>()
-        val userId = call.principal<UserIdPrincipal>()?.userId ?: "anonymous"
+        // Extract userId from JWT in Authorization header
+        val authHeader = call.request.headers["Authorization"]
+        val userId = if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            try {
+                val token = authHeader.removePrefix("Bearer ")
+                val jwt = com.auth0.jwt.JWT.decode(token)
+                jwt.getClaim("userId").asString() ?: "anonymous"
+            } catch (e: Exception) { "anonymous" }
+        } else "anonymous"
         val conversationId = req.conversationId ?: UUID.randomUUID().toString()
         val messages = orchestrator.process(userId, req.message, conversationId)
 

@@ -10,7 +10,9 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
 private fun ApplicationCall.userId(): String =
-    principal<UserIdPrincipal>()?.userId ?: "anonymous"
+    request.headers["Authorization"]?.removePrefix("Bearer ")?.let {
+        try { com.auth0.jwt.JWT.decode(it).getClaim("userId").asString() } catch (e: Exception) { null }
+    } ?: "anonymous"
 
 fun Route.strategyRoutes() {
     route("/api/strategies") {
