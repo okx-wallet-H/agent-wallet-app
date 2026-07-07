@@ -81,13 +81,23 @@ class AiTraderEngine(
 
     /** Fetch OKX data and run Claude filter */
     private suspend fun fetchAndFilter(trader: TraderProfile): List<TraderSignal> {
-        val signals = when (trader.dataSource) {
-            "signal" -> signalService.getSignals(trader.chain, if (trader.id == "whale-watcher") "3" else "1")
-                .map { s -> mapOf("token" to s.tokenSymbol, "amount" to s.amountUsd, "wallets" to s.triggerWallets.size.toString(), "soldRatio" to s.soldRatio) }
-            else -> emptyList()
+        val signals = try {
+            when (trader.dataSource) {
+                "signal" -> signalService.getSignals(trader.chain, if (trader.id == "whale-watcher") "3" else "1")
+                    .map { s -> mapOf("token" to s.tokenSymbol, "amount" to s.amountUsd, "wallets" to s.triggerWallets.size.toString(), "soldRatio" to s.soldRatio) }
+                else -> emptyList()
+            }
+        } catch (e: Exception) {
+            logger.warn("Signal fetch failed for ${trader.name}: ${e.message}")
+            return emptyList()
         }
 
-        if (signals.isEmpty()) return emptyList()
+        if (signals.isEmpty()) {
+            if (java.lang.System.currentTimeMillis() % 300_000 < 60_000) // log every 5 min
+                logger.info("Trader [${trader.name}] fetched 0 raw signals from OKX")
+            return emptyList()
+        }
+        logger.info("Trader [${trader.name}] fetched ${signals.size} raw signals, analyzing with Claude...")
 
         // Use Claude to filter and score
         val prompt = """

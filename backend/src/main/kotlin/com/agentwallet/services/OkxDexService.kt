@@ -12,7 +12,8 @@ import kotlinx.serialization.json.jsonPrimitive
 class OkxDexService(
     private val httpClient: HttpClient,
     private val auth: OkxAuth,
-    private val baseUrl: String
+    private val baseUrl: String,
+    private val builderCode: String = "yf83qce657mgxsjw"
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -23,6 +24,7 @@ class OkxDexService(
 
         val response = httpClient.post("$baseUrl/api/v6/dex/aggregator/quote") {
             auth.sign(this, body); setBody(body)
+            header("OK-BUILDER-CODE", builderCode)
         }
 
         val text: String = response.body()
@@ -48,6 +50,7 @@ class OkxDexService(
         val body = """[{"chainId":"$chainId","signedTx":"$signedTx"}]"""
         val response = httpClient.post("$baseUrl/api/v6/dex/aggregator/broadcast") {
             auth.sign(this, body); setBody(body)
+            header("OK-BUILDER-CODE", builderCode)
         }
         val text: String = response.body()
         val root = json.parseToJsonElement(text).jsonObject
