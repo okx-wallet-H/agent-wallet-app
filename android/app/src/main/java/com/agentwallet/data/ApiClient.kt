@@ -17,7 +17,7 @@ import kotlinx.serialization.json.jsonPrimitive
 /**
  * HTTP client for the Agent Wallet backend.
  */
-class ApiClient(private val baseUrl: String = "http://147.182.160.240:8080") {
+class ApiClient(val baseUrl: String = "http://147.182.160.240:8080") {
 
     private var authToken: String? = null
 
@@ -81,6 +81,13 @@ class ApiClient(private val baseUrl: String = "http://147.182.160.240:8080") {
         return httpClient.post("$baseUrl/api/strategies") {
             setBody(strategy)
         }.body()
+    }
+
+    // ─── Traders ───────────────────────────────────
+
+    suspend fun getTraders(): JsonObject {
+        val r: HttpResponse = httpClient.get("$baseUrl/api/traders")
+        return Json.parseToJsonElement(r.bodyAsText()).jsonObject
     }
 
     // ─── Signals ───────────────────────────────────

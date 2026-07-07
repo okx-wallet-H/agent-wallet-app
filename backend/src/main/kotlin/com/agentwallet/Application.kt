@@ -34,6 +34,10 @@ fun main() {
     GlobalScope.launch { signalAgent.start(this, "501", "1") }
     GlobalScope.launch { autonomousAgent.start(this) }
 
+    // Start AI Trader Engine
+    val traderEngine = AiTraderEngine(llmClient, okxSignal, okxSignal)
+    GlobalScope.launch { traderEngine.startAll(this) }
+
     embeddedServer(Netty, port = config.port, host = config.host) {
         configureSerialization()
         configureStatusPages()
@@ -45,6 +49,7 @@ fun main() {
             strategyRoutes()
             portfolioRoutes(config)
             signalRoutes(config)
+            traderRoutes(traderEngine)
         }
     }.start(wait = true)
 }
